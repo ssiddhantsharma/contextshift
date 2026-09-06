@@ -68,3 +68,39 @@ def test_columns_are_zero_based(tmp_path):
     d = conserve.jensen_shannon(p, "F", "all")
     assert int(d["column"].min()) == 0
     assert int(d["column"].max()) == 1
+
+
+@pytest.mark.parametrize(
+    "seqs", [["WWWW", "WWWW"], ["ACDE", "FGHI"], ["AAAA", "YYYY"]]
+)
+def test_jensen_shannon_is_bounded(tmp_path, seqs):
+    """With log base 2 the divergence lies in [0, 1] (Capra & Singh 2007)."""
+    d = conserve.jensen_shannon(write_alignment(tmp_path, seqs), "F", "all")
+    assert d["rate"].min() >= 0.0
+    assert d["rate"].max() <= 1.0
+
+
+def test_identical_distributions_have_zero_divergence():
+    background = list(conserve.BACKGROUND)
+    assert conserve._jensen_shannon(background, background) == pytest.approx(0.0, abs=1e-12)
+
+
+def test_divergence_is_symmetric():
+    skewed = [0.5, 0.5] + [0.0] * 18
+    background = list(conserve.BACKGROUND)
+    assert conserve._jensen_shannon(skewed, background) == pytest.approx(
+        conserve._jensen_shannon(background, skewed)
+    )
+
+
+def test_a_background_column_is_less_constrained_than_an_invariant_one(tmp_path):
+    counts = [max(1, round(f * 200)) for f in conserve.BACKGROUND]
+    column = "".join(a * n for a, n in zip(conserve.AMINO_ACIDS, counts, strict=True))
+
+    mixed = tmp_path / "mixed"; mixed.mkdir()
+    single = tmp_path / "single"; single.mkdir()
+    background = conserve.jensen_shannon(write_alignment(mixed, list(column)), "F", "all")
+    invariant = conserve.jensen_shannon(
+        write_alignment(single, ["W"] * len(column)), "F", "all"
+    )
+    assert invariant.loc[0, "rate"] < background.loc[0, "rate"]
