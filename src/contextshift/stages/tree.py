@@ -1,7 +1,4 @@
-"""Maximum-likelihood phylogeny with UFBoot supports.
-
-Flags are unverified against a real iqtree2; see VERIFICATION.md.
-"""
+"""Maximum-likelihood phylogeny with UFBoot supports (>=1000 replicates)."""
 
 from __future__ import annotations
 

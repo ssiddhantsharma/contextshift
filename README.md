@@ -59,12 +59,16 @@ following was established by building and running 4.1.0, not by reading its docs
 ## Shape of a run
 
 ```
-members  ──derep──▶ weights ──align──▶ MSA ──tree──▶ per-group Newick
-                                        │                    │
-                                    conserve             diverge
-                                        └────── classify ────┘
-                                                  │
-                                          sites × class
+typed loci ──families──▶ members ──derep──▶ weights
+                                              │
+                                           align ──▶ MSA ──tree──▶ per-group Newick
+                                                      │                   │
+                                                  conserve            diverge
+                                                      └───── classify ────┘
+                                                               │
+                                                    map ──▶ sites × class × structure
+                                                               │
+                                                            report
 ```
 
 Every stage boundary is a declared table (`contextshift schemas`), so you can enter
@@ -113,14 +117,12 @@ Verified by running 4.1.0 on its own CASP test data:
 
 ## Status
 
-Early. Partition algebra, schemas, the 2×2 join, BH correction, DIVERGE tree
-conformance and the drop zone are implemented and tested (60 tests). The
-`type`, `families`, `map`, `neighbours` and `report` stages are not yet built,
-so `members`, `neighbours` and `mapping` currently have no producing code.
+Early, but every stage now has producing code and every schema a producer.
+133 tests, including live runs of DIVERGE, MAFFT and MMseqs2.
 
-External-tool contracts and how each was checked are in
-[VERIFICATION.md](VERIFICATION.md). The Rate4Site and MEME parsers and the
-IQ-TREE flags are still unchecked against real output.
+Method sources are in [METHODS.md](METHODS.md); external-tool contracts and
+how each was checked are in [VERIFICATION.md](VERIFICATION.md). Only the MEME
+and Rate4Site adapters remain unrun, and both are optional.
 
 ## License
 

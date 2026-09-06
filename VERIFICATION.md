@@ -14,16 +14,20 @@ and how it was checked. "Measured" means the tool was run or its source read;
 | DIVERGE tree depth must be `> 3`, counted as root-to-leaf edges | measured | agrees with `binding.check_tree` on both sides of the boundary |
 | `Gu99`/`Rvs`/`TypeOneAnalysis` raise `NameError` in 4.1.0 | measured | `get_colnames` undefined; upstream PR zjupgx/diverge4#8 |
 | Qk ≥ 0.9 as the calling threshold | documented | DIVERGE User Guide uses `results.iloc[:, 0] > 0.9` |
-| MMseqs2 `_cluster.tsv` is representative-then-member, tab separated | documented | MMseqs2 wiki |
+| MMseqs2 `_cluster.tsv` is representative-then-member, tab separated | measured | ran 18-8cc5c; every representative is also a member |
+| Dereplication weights sum to the cluster count | measured | asserted in `test_tools_integration.py` |
 | MMseqs2 `--min-seq-id`, `-c`, `--cov-mode 0` | documented | MMseqs2 wiki |
 | FoldMason `easy-msa` writes `<prefix>_aa.fa` | documented | FoldMason README, verbatim |
 | Rate4Site is ConSurf's engine | documented | ConSurf 2010, *NAR* 38:W529; Pupko et al. 2002 |
 | FlaGs `_operon.tsv` column order | measured | writer in `FlaGs.py`, plus its shipped example output |
 | FlaGs `outdesc` is `cluster(count)\taccession\tdescription` | measured | shipped example output |
-| MAFFT `--localpair --maxiterate 1000` | unchecked | not installed |
-| IQ-TREE `-B` (UFBoot), `--prefix`, `-m MFP` | unchecked | `.treefile` is documented; the three flags are not verified from a primary source |
-| MEME `meme.txt` MOTIF line layout | unchecked | regex written against the documented format, not against real output |
-| Rate4Site `.res` layout | unchecked | parser written against the documented format, not against real output |
+| CCTyper `cas_operons.tab` list columns are stringified Python lists | measured | `castyping.py` writes `list(tmp['Hmm'])` into a cell, then `to_csv` |
+| CCTyper column names | documented | its README, cross-checked against the dict in `castyping.py` |
+| MAFFT `--localpair --maxiterate 1000 --anysymbol` | measured | ran 7.526 through the adapter |
+| IQ-TREE `-B` (UFBoot, `>=1000`), `--prefix`, `-m MFP` | measured | `iqtree2 2.4.0 -h`; full run wrote `.treefile` with UFBoot supports |
+| MEME `meme.txt` MOTIF line layout | unchecked, optional | not packaged for Homebrew; not run. Motif discovery is optional, and per-group comparison is also obtainable from the per-scope conservation |
+| Jensen-Shannon conservation | measured | computed in-library; unit-tested for the conserved/variable ordering, gap handling and redundancy weighting |
+| Rate4Site `.res` layout | unchecked, optional | parser retained as an alternative; not run. The default conservation path no longer needs it |
 
 Anything marked unchecked should be confirmed against real tool output before
 its numbers are trusted.

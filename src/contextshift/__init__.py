@@ -5,6 +5,7 @@ tree - genomic context, system subtype, host range - and it reports the sites
 that discriminate the labels, with conservation and structural context attached.
 """
 
+from . import report
 from .join import JoinThresholds, classify, summary
 from .partition import Partition, Provenance, adjusted_rand_index
 from .schema import ALL_SCHEMAS, SchemaError, TableSchema
@@ -15,6 +16,7 @@ __version__ = "0.1.0"
 __all__ = [
     "ALL_SCHEMAS",
     "JoinThresholds",
+    "report",
     "Partition",
     "Provenance",
     "SchemaError",

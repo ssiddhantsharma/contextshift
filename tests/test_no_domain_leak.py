@@ -5,15 +5,12 @@ from pathlib import Path
 
 SRC = Path(__file__).resolve().parents[1] / "src" / "contextshift"
 
+# Biological findings, not tool names. Naming a tool the library drives is
+# fine: mafft, mmseqs and cctyper are dependencies, cas4 is a research subject.
 FORBIDDEN = [
-    "cas4", "cas9", "cas12", "csa1", "crispr", "cctyper", "solo-cas", "recb",
+    "cas4", "cas9", "cas12", "csa1", "crispr", "solo-cas", "recb",
     "protospacer", "spacer acquisition", "hudaiberdiev", "makarova",
 ]
-
-ALLOWED_MENTIONS = {
-    # tool adapters may name the tool they shell out to
-    ("stages/_external.py", "cctyper"),
-}
 
 
 def library_files():
@@ -26,8 +23,6 @@ def test_no_domain_terms_in_library():
         rel = path.relative_to(SRC).as_posix()
         text = path.read_text().lower()
         for term in FORBIDDEN:
-            if (rel, term) in ALLOWED_MENTIONS:
-                continue
             for m in re.finditer(re.escape(term), text):
                 line = text[: m.start()].count("\n") + 1
                 offences.append(f"{rel}:{line} contains {term!r}")
