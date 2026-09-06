@@ -1,0 +1,40 @@
+[project]
+name = "contextshift"
+version = "0.1.0"
+description = "Partition-aware functional divergence for prokaryotic protein families"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12"
+dependencies = [
+    "pandas>=2.2",
+    "pyarrow>=16",
+    "numpy>=1.26",
+    "biopython>=1.83",
+    "typer>=0.12",
+]
+
+[project.optional-dependencies]
+diverge = ["diverge4"]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[project.scripts]
+contextshift = "contextshift.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/contextshift"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["F", "I", "B", "SIM", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/contextshift/cli.py" = ["B008"]  # typer declares defaults by calling Argument/Option
