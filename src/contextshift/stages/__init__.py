@@ -8,6 +8,8 @@ from . import (
     mapping,
     motifs,
     neighbours,
+    profiles,
+    structures,
     tree,
 )
 from ._external import ToolMissing, toolchain_report
@@ -23,6 +25,8 @@ __all__ = [
     "mapping",
     "motifs",
     "neighbours",
+    "profiles",
+    "structures",
     "toolchain_report",
     "tree",
 ]

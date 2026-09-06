@@ -23,6 +23,14 @@ and how it was checked. "Measured" means the tool was run or its source read;
 | FlaGs `outdesc` is `cluster(count)\taccession\tdescription` | measured | shipped example output |
 | CCTyper `cas_operons.tab` list columns are stringified Python lists | measured | `castyping.py` writes `list(tmp['Hmm'])` into a cell, then `to_csv` |
 | CCTyper column names | documented | its README, cross-checked against the dict in `castyping.py` |
+| DefenseFinder subtype string is `CAS_Class1-Subtype-I-E` | documented | raw README, verbatim |
+| DefenseFinder `protein_in_syst` and `name_of_profiles_in_sys` are independently alphabetised and must NOT be zipped | documented | raw README warning, verbatim |
+| PADLOC system names are `cas_type_I-E`, and it subdivides I-B1/I-B2, I-F1/2/3 | measured | padloc-db `sys/` listing, 33 CRISPR systems |
+| pyhmmer returns `str`, not `bytes`, from 0.11 onward | measured | ran 0.12.3 |
+| Pfam HMMs come gzipped from InterPro; pfam.xfam.org is retired | measured | PF01930 = `Cas_Cas4`, PF06023 = `Csa1` |
+| AlphaFold DB is on model v6; v3 and v4 return 404 | measured | resolved via the API, not constructed |
+| AlphaFold DB answers 400 for a malformed accession, 404 for an absent one | measured | both handled as "no model" |
+| SpacePHARER writes `#` match lines and `>` hit lines, 9 fields, PAM pipe-separated | documented | raw README, verbatim |
 | MAFFT `--localpair --maxiterate 1000 --anysymbol` | measured | ran 7.526 through the adapter |
 | IQ-TREE `-B` (UFBoot, `>=1000`), `--prefix`, `-m MFP` | measured | `-h` on 2.4.0 (macOS) and 3.1.3 (container); full run wrote `.treefile` with UFBoot supports |
 | IQ-TREE binary name varies (`iqtree2`/`iqtree3`/`iqtree`) | measured | bioconda ships `iqtree3`; `Tool.aliases` resolves it |
