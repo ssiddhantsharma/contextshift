@@ -13,11 +13,13 @@ or leave implicit, each of which silently corrupts results:
 4. The value is a POSTERIOR PROBABILITY Qk in [0, 1], not a p-value. Theta and
    alpha are per-comparison and live in `.summary`, not per site.
 
-Upstream defects found in 4.1.0, guarded here rather than worked around
-silently: `Gu99`, `Rvs` and `TypeOneAnalysis` call an undefined `get_colnames`
-and raise NameError on construction; `Gu2001` failed on this build. `Type2` —
-the Type-II test, which is the one that detects a property shift between
-groups — works.
+Upstream defect in 4.1.0: `Gu99`, `Rvs` and `TypeOneAnalysis` call an
+undefined `get_colnames` and raise NameError on construction, which makes every
+Type-I entry point unusable as shipped. The calculators already return
+display-ready labels, so the missing function is a pass-through; `apply_shim`
+installs it and Gu99 then runs, returning 781 kept positions on CASP with the
+same index as Type2. The shim is opt-out and always recorded, never silent.
+`Gu2001` failed independently on this build and is not used.
 """
 
 from __future__ import annotations
@@ -45,6 +47,11 @@ BROKEN_UPSTREAM = {
     "Rvs": "calls undefined get_colnames() in .summary (diverge 4.1.0)",
     "TypeOneAnalysis": "calls undefined get_colnames() in .summary (diverge 4.1.0)",
 }
+
+SHIM_NOTE = (
+    "Type-I ran through a shim for diverge 4.1.0's undefined get_colnames "
+    "(a pass-through over calculator._r_names())"
+)
 
 
 class DivergeUnavailable(RuntimeError):
@@ -135,6 +142,29 @@ def _import_diverge():
     return diverge
 
 
+def needs_shim() -> bool:
+    """True if this diverge build has the undefined-get_colnames defect."""
+    try:
+        import diverge.binding as binding
+    except ImportError:
+        return False
+    return not hasattr(binding, "get_colnames")
+
+
+def apply_shim() -> bool:
+    """Install the missing get_colnames. Returns True if it was needed.
+
+    Verified against 4.1.0: the C++ calculators already return display-ready
+    cluster-pair labels such as "A/B", so the function is a pass-through.
+    """
+    if not needs_shim():
+        return False
+    import diverge.binding as binding
+
+    binding.get_colnames = lambda names: list(names)
+    return True
+
+
 def available() -> bool:
     try:
         _import_diverge()
@@ -219,30 +249,42 @@ def run_pair(
     partition: str,
     group_a: str,
     group_b: str,
-    include_type1: bool = False,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Run the Type-II test for one pair of groups.
+    include_type1: bool = True,
+    allow_shim: bool = True,
+) -> tuple[pd.DataFrame, pd.DataFrame, list[str]]:
+    """Run Type-II and, unless disabled, Type-I for one pair of groups.
 
-    Type-I is opt-in and will raise, because every Type-I entry point in
-    diverge 4.1.0 is broken upstream. Silently returning no Type-I rows would
-    look like "no Type-I sites found", which is a different claim entirely.
+    Returns (sites, comparisons, notes). Notes record the shim if it was used,
+    so a Type-I result can never look like it came from stock upstream.
     """
     diverge = _import_diverge()
     names = [group_a, group_b]
-    sites, comparisons = [], []
+    sites, comparisons, notes = [], [], []
 
     t2 = diverge.Type2(str(alignment), str(tree_a), str(tree_b), cluster_name=names)
     sites.append(normalise(t2.results, family, partition, group_a, group_b, TYPE2))
-    comparisons.append(
-        normalise_summary(t2.summary, family, partition, group_a, group_b, TYPE2)
-    )
+    comparisons.append(normalise_summary(t2.summary, family, partition, group_a, group_b, TYPE2))
 
     if include_type1:
-        raise DivergeUpstreamBug(
-            "Type-I is unavailable: " + "; ".join(f"{k} {v}" for k, v in BROKEN_UPSTREAM.items())
+        if needs_shim():
+            if not allow_shim:
+                raise DivergeUpstreamBug(
+                    "Type-I unavailable: " + BROKEN_UPSTREAM["Gu99"] + ". "
+                    "Pass allow_shim=True or patch upstream."
+                )
+            if apply_shim():
+                notes.append(SHIM_NOTE)
+        gu = diverge.Gu99(str(alignment), str(tree_a), str(tree_b), cluster_name=names)
+        sites.append(normalise(gu.results, family, partition, group_a, group_b, TYPE1))
+        comparisons.append(
+            normalise_summary(gu.summary, family, partition, group_a, group_b, TYPE1)
         )
 
-    return pd.concat(sites, ignore_index=True), pd.concat(comparisons, ignore_index=True)
+    return (
+        pd.concat(sites, ignore_index=True),
+        pd.concat(comparisons, ignore_index=True),
+        notes,
+    )
 
 
 def run_partition(
@@ -251,9 +293,10 @@ def run_partition(
     partition: Partition,
     family: str,
     skip_underpowered: bool = False,
-) -> tuple[pd.DataFrame, pd.DataFrame, list[str]]:
+) -> tuple[pd.DataFrame, pd.DataFrame, list[str], list[str]]:
     """Run every group pair. Skipped pairs are returned, never silently dropped."""
     skipped: list[str] = []
+    notes: list[str] = []
     weak = set(partition.underpowered_groups())
     site_frames, comparison_frames = [], []
 
@@ -264,9 +307,10 @@ def run_partition(
         if skip_underpowered and (a in weak or b in weak):
             skipped.append(f"{a}|{b}: underpowered")
             continue
-        s, c = run_pair(alignment, trees[a], trees[b], family, partition.name, a, b)
+        s, c, pair_notes = run_pair(alignment, trees[a], trees[b], family, partition.name, a, b)
         site_frames.append(s)
         comparison_frames.append(c)
+        notes.extend(pair_notes)
 
     empty_sites = SITES.validate(pd.DataFrame(columns=[c.name for c in SITES.columns]))
     empty_comp = COMPARISONS.validate(pd.DataFrame(columns=[c.name for c in COMPARISONS.columns]))
@@ -274,4 +318,5 @@ def run_partition(
         pd.concat(site_frames, ignore_index=True) if site_frames else empty_sites,
         pd.concat(comparison_frames, ignore_index=True) if comparison_frames else empty_comp,
         skipped,
+        sorted(set(notes)),
     )
