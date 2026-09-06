@@ -1,4 +1,4 @@
-from . import align, conserve, derep, diverge, motifs, tree
+from . import align, conserve, derep, diverge, families, mapping, motifs, neighbours, tree
 from ._external import ToolMissing, toolchain_report
 
 __all__ = [
@@ -7,7 +7,10 @@ __all__ = [
     "conserve",
     "derep",
     "diverge",
+    "families",
+    "mapping",
     "motifs",
+    "neighbours",
     "toolchain_report",
     "tree",
 ]

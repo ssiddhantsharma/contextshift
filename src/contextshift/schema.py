@@ -84,7 +84,9 @@ MEMBERS = TableSchema(
         Column("copy_index", "Int64", required=False, nullable=True),
         Column("hit_evalue", "float64", required=False, nullable=True),
     ),
-    key=("member_id",),
+    # An ORF carrying two gene identities is one member_id under two families,
+    # so member_id alone does not identify a row.
+    key=("member_id", "family"),
 )
 
 DEREP = TableSchema(
