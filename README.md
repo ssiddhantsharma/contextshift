@@ -41,6 +41,11 @@ contextshift doctor
 `doctor` reports which optional tools are on PATH. All are checked at call
 time, so the library imports without them.
 
+DIVERGE is not declared as a dependency because it cannot be installed from
+PyPI: the `diverge` sdist reads a `requirements.txt` it does not ship, and its
+default source tree is Windows-only. Build it from a clone using `src_linux`;
+[VERIFICATION.md](VERIFICATION.md) has the details.
+
 ## Pipeline
 
 ```

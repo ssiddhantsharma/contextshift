@@ -16,7 +16,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-diverge = ["diverge4"]
 dev = ["pytest>=8", "ruff>=0.6"]
 
 [project.scripts]
