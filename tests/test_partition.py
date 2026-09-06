@@ -105,3 +105,32 @@ def test_tsv_with_weights(tmp_path):
     assert p.labels == {"a": "solo", "b": "assoc"}
     assert p.weight("a") == 0.25
     assert p.weight("b") == 1.0
+
+
+def test_caveats_travel_with_power():
+    p = Partition(
+        name="p",
+        labels={f"m{i}": ("clean" if i < 40 else "messy") for i in range(80)},
+        provenance=PROV,
+        caveats={"messy": "labelling does not correspond to a clade"},
+    )
+    rows = {r.label: r for r in p.power()}
+    assert rows["messy"].caveat
+    assert rows["messy"].qualified
+    assert not rows["clean"].qualified
+
+
+def test_caveat_for_unknown_group_rejected():
+    with pytest.raises(ValueError, match="unknown groups"):
+        Partition(name="p", labels={"a": "x"}, provenance=PROV, caveats={"nope": "hi"})
+
+
+def test_caveats_survive_restrict_and_roundtrip(tmp_path):
+    p = Partition(
+        name="p", labels={"a": "x", "b": "y"}, provenance=PROV,
+        caveats={"x": "polyphyletic"},
+    )
+    assert p.restrict(["a"]).caveats == {"x": "polyphyletic"}
+    path = tmp_path / "p.json"
+    p.to_json(path)
+    assert Partition.from_json(path).caveats == {"x": "polyphyletic"}

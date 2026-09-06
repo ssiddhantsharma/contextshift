@@ -64,6 +64,8 @@ def power(
     weak = [r.label for r in p.power() if r.effective_n < min_effective]
     if weak:
         typer.echo(f"\nunderpowered: {', '.join(weak)}")
+    for group, caveat in p.qualified_groups().items():
+        typer.echo(f"caveat [{group}]: {caveat}")
 
 
 @app.command()

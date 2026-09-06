@@ -38,10 +38,16 @@ class GroupPower:
     label: str
     n: int
     effective_n: float
+    caveat: str = ""
 
     @property
     def underpowered(self) -> bool:
         return self.effective_n < MIN_EFFECTIVE_N
+
+    @property
+    def qualified(self) -> bool:
+        """True if anything about this group needs stating alongside its result."""
+        return self.underpowered or bool(self.caveat)
 
 
 MIN_EFFECTIVE_N = 30.0
@@ -53,6 +59,10 @@ class Partition:
     labels: dict[str, str]
     provenance: Provenance
     weights: dict[str, float] = field(default_factory=dict)
+    #: Per-group qualifications that must travel with any result, e.g. a group
+    #: the labelling calls one thing that the phylogeny does not recover as a
+    #: clade. Carried, not enforced: it changes interpretation, not arithmetic.
+    caveats: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not self.labels:
@@ -60,6 +70,9 @@ class Partition:
         unknown = set(self.weights) - set(self.labels)
         if unknown:
             raise ValueError(f"weights reference {len(unknown)} members not in labels")
+        stray = set(self.caveats) - set(self.labels.values())
+        if stray:
+            raise ValueError(f"caveats reference unknown groups: {sorted(stray)}")
 
     @property
     def members(self) -> list[str]:
@@ -99,7 +112,14 @@ class Partition:
     def power(self) -> list[GroupPower]:
         eff = self.effective_counts()
         counts = self.counts()
-        return [GroupPower(g, counts[g], eff[g]) for g in self.group_names]
+        return [
+            GroupPower(g, counts[g], eff[g], self.caveats.get(g, ""))
+            for g in self.group_names
+        ]
+
+    def qualified_groups(self) -> dict[str, str]:
+        """Groups carrying a caveat, so a report can never omit them."""
+        return {g: c for g, c in self.caveats.items() if c}
 
     def underpowered_groups(self) -> list[str]:
         return [p.label for p in self.power() if p.underpowered]
@@ -114,6 +134,7 @@ class Partition:
             labels={m: self.labels[m] for m in sorted(keep)},
             provenance=self.provenance,
             weights={m: w for m, w in self.weights.items() if m in keep},
+            caveats=dict(self.caveats),
         )
 
     def drop_groups(self, labels: list[str]) -> Partition:
@@ -143,6 +164,7 @@ class Partition:
                     "provenance": self.provenance.as_dict(),
                     "labels": self.labels,
                     "weights": self.weights,
+                    "caveats": self.caveats,
                 },
                 indent=2,
                 sort_keys=True,
@@ -157,6 +179,7 @@ class Partition:
             labels=d["labels"],
             provenance=Provenance(**d["provenance"]),
             weights=d.get("weights", {}),
+            caveats=d.get("caveats", {}),
         )
 
     @classmethod
