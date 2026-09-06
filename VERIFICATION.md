@@ -44,5 +44,10 @@ honoured inside `RUN`; `WORKDIR` creates directories as root so the unprivileged
 user cannot write to them; and `MAMBA_DOCKERFILE_ACTIVATE` applies at build time
 only, so the runtime entrypoint must activate the environment.
 
-CCTyper is not in the image on arm64: bioconda has no `linux-aarch64` build of
-prodigal. Add it to the micromamba line on x86_64.
+CCTyper is not in the image on arm64. The cause is not a missing ARM build:
+prodigal 2.6.3, minced, cairosvg, blast and hmmer are all available for
+linux-aarch64 or noarch. The bioconda cctyper recipe pins
+`prodigal >=2.0,<=2.6.2`, and 2.6.2 is the last version *without* an aarch64
+build, so the ceiling excludes the only ARM-capable prodigal. Verified by
+resolving the same dependency set with the ceiling removed, which succeeds.
+Fix proposed as bioconda-recipes#68871.

@@ -12,9 +12,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# CCTyper is deliberately absent: it needs prodigal, which bioconda does not
-# build for linux-aarch64. On x86_64 add `cctyper` to the list below. The
-# `loci` stage only parses its output, so typing can be done elsewhere.
+# CCTyper is absent on arm64. Not because a dependency lacks an ARM build --
+# every one of them has one -- but because the bioconda recipe pins
+# `prodigal >=2.0,<=2.6.2` and only prodigal 2.6.3 ships linux-aarch64.
+# Add `cctyper` to the list below on x86_64, or once bioconda-recipes#68871 lands.
+# The `loci` stage only parses typer output, so typing can be done elsewhere.
 USER $MAMBA_USER
 RUN micromamba install -y -n base -c conda-forge -c bioconda \
         python=3.12 mmseqs2 mafft iqtree meme \
