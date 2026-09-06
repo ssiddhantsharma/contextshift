@@ -24,10 +24,25 @@ and how it was checked. "Measured" means the tool was run or its source read;
 | CCTyper `cas_operons.tab` list columns are stringified Python lists | measured | `castyping.py` writes `list(tmp['Hmm'])` into a cell, then `to_csv` |
 | CCTyper column names | documented | its README, cross-checked against the dict in `castyping.py` |
 | MAFFT `--localpair --maxiterate 1000 --anysymbol` | measured | ran 7.526 through the adapter |
-| IQ-TREE `-B` (UFBoot, `>=1000`), `--prefix`, `-m MFP` | measured | `iqtree2 2.4.0 -h`; full run wrote `.treefile` with UFBoot supports |
+| IQ-TREE `-B` (UFBoot, `>=1000`), `--prefix`, `-m MFP` | measured | `-h` on 2.4.0 (macOS) and 3.1.3 (container); full run wrote `.treefile` with UFBoot supports |
+| IQ-TREE binary name varies (`iqtree2`/`iqtree3`/`iqtree`) | measured | bioconda ships `iqtree3`; `Tool.aliases` resolves it |
 | MEME `meme.txt` MOTIF line layout | unchecked, optional | not packaged for Homebrew; not run. Motif discovery is optional, and per-group comparison is also obtainable from the per-scope conservation |
 | Jensen-Shannon conservation | measured | computed in-library; unit-tested for the conserved/variable ordering, gap handling and redundancy weighting |
 | Rate4Site `.res` layout | unchecked, optional | parser retained as an alternative; not run. The default conservation path no longer needs it |
 
 Anything marked unchecked should be confirmed against real tool output before
 its numbers are trusted.
+
+## Container
+
+`Dockerfile` builds DIVERGE from source and installs MMseqs2, MAFFT, IQ-TREE
+and MEME. Verified by building and running it: DIVERGE 4.1.0 compiles and
+imports, `needs_shim` is False, and `doctor` finds four of the optional tools.
+
+Three bugs were found only by building it, not by reading it: heredocs are not
+honoured inside `RUN`; `WORKDIR` creates directories as root so the unprivileged
+user cannot write to them; and `MAMBA_DOCKERFILE_ACTIVATE` applies at build time
+only, so the runtime entrypoint must activate the environment.
+
+CCTyper is not in the image on arm64: bioconda has no `linux-aarch64` build of
+prodigal. Add it to the micromamba line on x86_64.

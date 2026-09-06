@@ -17,24 +17,37 @@ class Tool:
     name: str
     version_args: tuple[str, ...] = ("--version",)
     install_hint: str = ""
+    #: Alternatives tried in order; distributions rename binaries between
+    #: major versions (iqtree2 vs iqtree3 vs iqtree).
+    aliases: tuple[str, ...] = ()
+
+    @property
+    def binary(self) -> str | None:
+        for name in (self.name, *self.aliases):
+            found = shutil.which(name)
+            if found:
+                return name
+        return None
 
     @property
     def path(self) -> str | None:
-        return shutil.which(self.name)
+        name = self.binary
+        return shutil.which(name) if name else None
 
     def require(self) -> str:
-        p = self.path
-        if p is None:
+        name = self.binary
+        if name is None:
+            tried = ", ".join((self.name, *self.aliases))
             hint = f" ({self.install_hint})" if self.install_hint else ""
-            raise ToolMissing(f"{self.name} not found on PATH{hint}")
-        return p
+            raise ToolMissing(f"none of [{tried}] found on PATH{hint}")
+        return name
 
     def version(self) -> str:
         if self.path is None:
             return "missing"
         try:
             out = subprocess.run(
-                [self.name, *self.version_args],
+                [self.binary or self.name, *self.version_args],
                 capture_output=True,
                 text=True,
                 timeout=30,
@@ -48,7 +61,8 @@ class Tool:
 MMSEQS = Tool("mmseqs", ("version",), "conda install -c bioconda mmseqs2")
 MAFFT = Tool("mafft", ("--version",), "conda install -c bioconda mafft")
 FOLDMASON = Tool("foldmason", ("version",), "conda install -c bioconda foldmason")
-IQTREE = Tool("iqtree2", ("--version",), "conda install -c bioconda iqtree")
+IQTREE = Tool("iqtree2", ("--version",), "conda install -c bioconda iqtree",
+              aliases=("iqtree3", "iqtree"))
 RATE4SITE = Tool("rate4site", ("-h",), "conda install -c bioconda rate4site")
 MEME = Tool("meme", ("-version",), "conda install -c bioconda meme")
 CCTYPER = Tool("cctyper", ("--version",), "pip install cctyper")

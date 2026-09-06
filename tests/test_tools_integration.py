@@ -59,3 +59,13 @@ def test_effective_n_counts_clusters_not_sequences(unaligned, tmp_path):
     )
     assert p.counts()["all"] == len(d)
     assert p.effective_counts()["all"] == pytest.approx(d["cluster_id"].nunique())
+
+
+def test_tool_resolves_versioned_aliases():
+    """Distributions rename binaries between major versions."""
+    from contextshift.stages._external import IQTREE, Tool
+
+    assert "iqtree3" in IQTREE.aliases
+    missing = Tool("definitely-not-a-real-binary", aliases=("also-not-real",))
+    assert missing.binary is None
+    assert missing.path is None

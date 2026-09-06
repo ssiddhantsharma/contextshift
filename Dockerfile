@@ -12,6 +12,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# CCTyper is deliberately absent: it needs prodigal, which bioconda does not
+# build for linux-aarch64. On x86_64 add `cctyper` to the list below. The
+# `loci` stage only parses its output, so typing can be done elsewhere.
 USER $MAMBA_USER
 RUN micromamba install -y -n base -c conda-forge -c bioconda \
         python=3.12 mmseqs2 mafft iqtree meme \
@@ -34,5 +37,7 @@ WORKDIR /work
 COPY --chown=$MAMBA_USER:$MAMBA_USER . /tmp/contextshift
 RUN pip install --no-cache-dir /tmp/contextshift && rm -rf /tmp/contextshift
 
-ENTRYPOINT ["contextshift"]
+# MAMBA_DOCKERFILE_ACTIVATE only affects build-time RUN steps; the base image's
+# entrypoint activates the environment for the running container.
+ENTRYPOINT ["/usr/local/bin/_entrypoint.sh", "contextshift"]
 CMD ["doctor"]

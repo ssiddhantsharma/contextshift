@@ -14,11 +14,11 @@ def iqtree(
     ufboot: int = 1000,
     threads: str = "AUTO",
 ) -> Path:
-    IQTREE.require()
+    binary = IQTREE.require()
     Path(prefix).parent.mkdir(parents=True, exist_ok=True)
     run(
         [
-            "iqtree2", "-s", str(alignment), "--prefix", str(prefix),
+            binary, "-s", str(alignment), "--prefix", str(prefix),
             "-m", model, "-B", str(ufboot), "-T", str(threads), "--quiet", "-redo",
         ]
     )
