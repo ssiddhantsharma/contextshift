@@ -52,6 +52,11 @@ honoured inside `RUN`; `WORKDIR` creates directories as root so the unprivileged
 user cannot write to them; and `MAMBA_DOCKERFILE_ACTIVATE` applies at build time
 only, so the runtime entrypoint must activate the environment.
 
+The image also carries pyhmmer and DefenseFinder, both verified present after
+the build. PADLOC is left out: it resolves on arm64 but its R stack takes the
+install from 154 packages / 341MB to 330 / 695MB. One line in the Dockerfile
+adds it.
+
 CCTyper is not in the image on arm64. The cause is not a missing ARM build:
 prodigal 2.6.3, minced, cairosvg, blast and hmmer are all available for
 linux-aarch64 or noarch. The bioconda cctyper recipe pins
