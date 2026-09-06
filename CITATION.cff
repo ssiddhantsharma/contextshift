@@ -1,0 +1,42 @@
+cff-version: 1.2.0
+title: contextshift
+message: If you use this software, please cite it.
+type: software
+authors:
+  - family-names: Sharma
+    given-names: Siddhant
+    orcid: https://orcid.org/0000-0000-0000-0000
+repository-code: https://github.com/ssiddhantsharma/contextshift
+license: MIT
+abstract: >-
+  Finds the residues that distinguish one group of a protein family from
+  another, where the grouping is supplied from outside the phylogeny. Crosses
+  per-site conservation with functional-divergence tests and maps the result
+  onto structure.
+keywords:
+  - bioinformatics
+  - functional divergence
+  - protein evolution
+  - comparative genomics
+references:
+  - type: article
+    title: >-
+      DIVERGE v4: a platform for large-scale analysis of functional divergence
+      across multi-gene families
+    journal: Molecular Biology and Evolution
+    year: 2025
+    volume: "42"
+    notes: msaf277
+  - type: article
+    title: >-
+      Predicting functionally important residues from sequence conservation
+    authors:
+      - family-names: Capra
+        given-names: John A.
+      - family-names: Singh
+        given-names: Mona
+    journal: Bioinformatics
+    year: 2007
+    volume: "23"
+    start: 1875
+    end: 1882

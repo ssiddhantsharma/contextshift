@@ -8,10 +8,10 @@ from pathlib import Path
 import pandas as pd
 import typer
 
-from . import __version__, join, stats
+from . import __version__, join, report, stats
 from .partition import Partition, Provenance, adjusted_rand_index
 from .schema import ALL_SCHEMAS
-from .stages import diverge, toolchain_report
+from .stages import conserve, derep, diverge, families, loci, mapping, toolchain_report
 
 app = typer.Typer(add_completion=False, help="Partition-aware functional divergence.")
 
@@ -116,6 +116,118 @@ def classify_cmd(
     result.to_parquet(out, index=False)
     typer.echo(f"classified {len(result)} columns -> {out}")
     typer.echo(join.summary(result).to_string(index=False))
+
+
+@app.command("loci")
+def loci_cmd(
+    operons: Path = typer.Argument(..., help="cas_operons.tab from a typer"),
+    out: Path = typer.Argument(..., help="hits parquet"),
+    partition_out: Path = typer.Option(None, help="also write a subtype partition JSON"),
+    source: str = typer.Option("unknown", help="typer name and version"),
+    scheme: str = typer.Option("unknown", help="classification scheme and version"),
+) -> None:
+    """Parse typed loci into per-gene hits, and optionally a subtype partition."""
+    hits = loci.to_hits(loci.read_operons(operons))
+    hits.to_parquet(out, index=False)
+    typer.echo(f"{len(hits)} hits from {hits['locus_id'].nunique()} loci -> {out}")
+    if partition_out:
+        p, dropped = loci.subtype_partition(hits, source, scheme)
+        p.to_json(partition_out)
+        typer.echo(f"partition: {p.counts()} -> {partition_out}")
+        if dropped:
+            typer.echo(f"dropped {len(dropped)} members with an unusable subtype")
+
+
+@app.command("families")
+def families_cmd(
+    hits: Path = typer.Argument(..., help="hits parquet from `loci`"),
+    out: Path = typer.Argument(..., help="members parquet"),
+    fusion_policy: str = typer.Option(families.FLAG, help="flag | exclude"),
+) -> None:
+    """Group hits into families, handling fused ORFs and paralogous copies."""
+    members, rep = families.build(pd.read_parquet(hits), fusion_policy=fusion_policy)
+    members.to_parquet(out, index=False)
+    typer.echo(rep.as_text())
+    typer.echo(f"-> {out}")
+
+
+@app.command("derep")
+def derep_cmd(
+    fasta: Path = typer.Argument(..., help="protein FASTA"),
+    out: Path = typer.Argument(..., help="derep parquet"),
+    identity: float = typer.Option(0.90, help="MMseqs2 --min-seq-id"),
+    threads: int = typer.Option(4),
+) -> None:
+    """Cluster sequences, keeping cluster size as a weight."""
+    d = derep.cluster(fasta, identity=identity, threads=threads)
+    d.to_parquet(out, index=False)
+    n = d["cluster_id"].nunique()
+    typer.echo(f"{len(d)} sequences -> {n} clusters ({len(d)/n:.2f}x redundancy) -> {out}")
+
+
+@app.command("conserve")
+def conserve_cmd(
+    alignment: Path = typer.Argument(...),
+    out: Path = typer.Argument(..., help="conservation parquet"),
+    family: str = typer.Option(...),
+    scope: str = typer.Option(conserve.SCOPE_ALL, help="'all' or a group name"),
+) -> None:
+    """Per-column conservation (Jensen-Shannon; lower means more constrained)."""
+    d = conserve.jensen_shannon(alignment, family, scope)
+    d.to_parquet(out, index=False)
+    typer.echo(f"{len(d)} columns, {int(d['rate'].isna().sum())} too gappy to score -> {out}")
+
+
+@app.command("diverge")
+def diverge_cmd(
+    alignment: Path = typer.Argument(...),
+    tree_a: Path = typer.Argument(...),
+    tree_b: Path = typer.Argument(...),
+    out: Path = typer.Argument(..., help="sites parquet"),
+    family: str = typer.Option(...),
+    group_a: str = typer.Option("A"),
+    group_b: str = typer.Option("B"),
+    comparisons_out: Path = typer.Option(None, help="per-comparison coefficients"),
+) -> None:
+    """Type-I and Type-II divergence for one group pair."""
+    sites, comps, notes = diverge.run_pair(
+        alignment, tree_a, tree_b, family, "supplied", group_a, group_b)
+    sites.to_parquet(out, index=False)
+    typer.echo(f"{len(sites)} site rows over {sites['column'].nunique()} columns -> {out}")
+    for n in notes:
+        typer.echo(f"note: {n}")
+    if comparisons_out:
+        comps.to_parquet(comparisons_out, index=False)
+
+
+@app.command("map")
+def map_cmd(
+    alignment: Path = typer.Argument(...),
+    structure: Path = typer.Argument(..., help="mmCIF"),
+    chain: str = typer.Argument(...),
+    reference_id: str = typer.Argument(..., help="sequence id in the alignment"),
+    out: Path = typer.Argument(..., help="mapping parquet"),
+    family: str = typer.Option(...),
+) -> None:
+    """Map alignment columns onto author residue numbers."""
+    residues = mapping.read_chain(structure, chain)
+    aligned = mapping.read_alignment(alignment)[reference_id]
+    m, mismatches = mapping.map_columns(aligned, residues, family, reference_id)
+    m.to_parquet(out, index=False)
+    typer.echo(f"{len(m)} columns mapped to {chain}:{min(m['resnum'])}..{max(m['resnum'])} -> {out}")
+
+
+@app.command("report")
+def report_cmd(
+    classified: Path = typer.Argument(..., help="classified parquet from `classify`"),
+    outdir: Path = typer.Argument(...),
+) -> None:
+    """Write figures and a text summary."""
+    df = pd.read_parquet(classified)
+    run = report.RunSummary()
+    run.stage("columns", len(df))
+    for p in report.write(outdir, run, df):
+        typer.echo(f"  {p}")
 
 
 @app.command("make-partition")

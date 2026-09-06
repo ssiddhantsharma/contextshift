@@ -49,6 +49,14 @@ its sdist reads a `requirements.txt` it does not ship and its default source
 tree is Windows-only. Build it from a clone using `src_linux`; see
 [VERIFICATION.md](VERIFICATION.md).
 
+The `Dockerfile` does all of that for you, and brings MMseqs2, MAFFT, IQ-TREE
+and MEME with it:
+
+```bash
+docker build -t contextshift .
+docker run --rm -v "$PWD:/work" contextshift doctor
+```
+
 ## Pipeline
 
 ```
@@ -66,6 +74,19 @@ typed loci ─families─▶ members ─derep─▶ weights
 
 Every stage boundary is a declared table (`contextshift schemas`), so you can
 enter anywhere with your own data and be told at once if it does not fit.
+
+```bash
+contextshift loci      cas_operons.tab hits.parquet \
+                       --partition-out subtype.json --source mytyper-1.2 --scheme scheme-2020
+contextshift families  hits.parquet members.parquet
+contextshift derep     family.faa derep.parquet --identity 0.90
+contextshift conserve  family.aln cons.parquet --family Cas4 --scope all
+contextshift diverge   family.aln groupA.nwk groupB.nwk sites.parquet --family Cas4
+contextshift fdr       sites.parquet sites_q.parquet
+contextshift classify  sites_q.parquet cons.parquet classified.parquet
+contextshift map       family.aln ref.cif A ref_id mapping.parquet --family Cas4
+contextshift report    classified.parquet out/
+```
 
 ## Check power before anything expensive
 
