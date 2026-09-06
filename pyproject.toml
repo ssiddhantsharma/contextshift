@@ -16,7 +16,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.6"]
+# profile assignment is optional; the rest of the library works without it
+profiles = ["pyhmmer>=0.10"]
+dev = ["pytest>=8", "ruff>=0.6", "pyhmmer>=0.10"]
 
 [project.scripts]
 contextshift = "contextshift.cli:app"

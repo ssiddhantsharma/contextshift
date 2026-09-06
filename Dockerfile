@@ -18,8 +18,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Add `cctyper` to the list below on x86_64, or once bioconda-recipes#68871 lands.
 # The `loci` stage only parses typer output, so typing can be done elsewhere.
 USER $MAMBA_USER
+# DefenseFinder gives a second, independent partition to score the first
+# against, and reports its subtype directly. PADLOC does the same job but pulls
+# an R stack: 330 packages and 695MB against 154 and 341MB. Add `padloc` here
+# if you want both typers.
 RUN micromamba install -y -n base -c conda-forge -c bioconda \
-        python=3.12 mmseqs2 mafft iqtree meme \
+        python=3.12 mmseqs2 mafft iqtree meme pyhmmer defense-finder \
     && micromamba clean --all --yes
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
 
@@ -37,7 +41,7 @@ RUN git clone --depth 1 https://github.com/zjupgx/diverge4.git \
 
 WORKDIR /work
 COPY --chown=$MAMBA_USER:$MAMBA_USER . /tmp/contextshift
-RUN pip install --no-cache-dir /tmp/contextshift && rm -rf /tmp/contextshift
+RUN pip install --no-cache-dir '/tmp/contextshift[profiles]' && rm -rf /tmp/contextshift
 
 # MAMBA_DOCKERFILE_ACTIVATE only affects build-time RUN steps; the base image's
 # entrypoint activates the environment for the running container.

@@ -49,8 +49,10 @@ its sdist reads a `requirements.txt` it does not ship and its default source
 tree is Windows-only. Build it from a clone using `src_linux`; see
 [VERIFICATION.md](VERIFICATION.md).
 
-The `Dockerfile` does all of that for you, and brings MMseqs2, MAFFT, IQ-TREE
-and MEME with it:
+The `Dockerfile` does all of that for you, and brings MMseqs2, MAFFT, IQ-TREE,
+MEME, pyhmmer and DefenseFinder with it. PADLOC is left out of the default
+image because its R stack roughly doubles the download; one commented line adds
+it:
 
 ```bash
 docker build -t contextshift .
@@ -60,16 +62,18 @@ docker run --rm -v "$PWD:/work" contextshift doctor
 ## Pipeline
 
 ```
-typed loci ─families─▶ members ─derep─▶ weights
-                                          │
-                                       align ─▶ MSA ─tree─▶ per-group Newick
-                                                  │               │
-                                              conserve        diverge
-                                                  └── classify ───┘
-                                                        │
-                                              map ─▶ sites × class × structure
-                                                        │
-                                                     report
+typed loci ─┬─ families ─▶ members ─derep─▶ weights
+            │                                  │
+            └─ typers ─▶ agreement          profiles ─▶ family by HMM hit
+                         (ARI)                 │
+                                            align ─▶ MSA ─tree─▶ per-group Newick
+                                                       │               │
+                                                   conserve        diverge
+                                                       └── classify ───┘
+                                                             │
+                                    structures ─▶ map ─▶ sites × class × structure
+                                                             │
+                                                          report
 ```
 
 Every stage boundary is a declared table (`contextshift schemas`), so you can
@@ -88,6 +92,17 @@ contextshift map       family.aln ref.cif A ref_id mapping.parquet --family Cas4
 contextshift report    classified.parquet out/
 ```
 
+Two checks worth running before the analysis, not after:
+
+```bash
+# do two independent typers agree on the grouping?
+contextshift typers cctyper_out/cas_operons.tab defense_finder_systems.tsv \
+                    --format-a cctyper --format-b defensefinder --system CAS
+
+# is family membership supported by a profile, or only by a label?
+contextshift profiles family.faa assigned.parquet --pfam PF01930 --pfam PF06023
+```
+
 ## Check power before anything expensive
 
 ```bash
@@ -103,7 +118,9 @@ looks large and is not gets flagged before you spend anything.
 ## Design rules
 
 - The library is target-agnostic. A biological finding in library source fails
-  a test; naming a tool it drives does not.
+  a test; naming a tool it drives does not. That guard has rejected real code.
+- A label is not evidence. Family membership can be assigned by profile hit,
+  and a partition can be scored against a second, independent typer.
 - Reference data from a prior study never replaces a computed result. It
   produces a comparison.
 - Multiple-testing correction is global by default, across family × pair × column.
@@ -134,6 +151,11 @@ pair taken from a three-cluster run (`tests/test_validation.py`).
 | [DIVERGE v4](https://github.com/zjupgx/diverge4) | Gu 1999, *MBE* 16:1664; Cheng et al. 2025, *MBE* 42:msaf277 |
 | [MEME](https://meme-suite.org/) | Bailey & Elkan 1994, *ISMB* 2:28 |
 | [FlaGs](https://github.com/GCA-VH-lab/FlaGs) | Saha et al. 2021, *Bioinformatics* 37:1312 |
+| [DefenseFinder](https://github.com/mdmparis/defense-finder) | Tesson et al. 2022, *Nat Commun* 13:2561 |
+| [PADLOC](https://github.com/padlocbio/padloc) | Payne et al. 2022, *NAR* 50:W541 |
+| [pyhmmer](https://github.com/althonos/pyhmmer) | Larralde & Zeller 2023, *Bioinformatics* 39:btad214 |
+| [AlphaFold DB](https://alphafold.ebi.ac.uk/) | Varadi et al. 2024, *NAR* 52:D368 |
+| [Pfam](https://www.ebi.ac.uk/interpro/) via InterPro | Mistry et al. 2021, *NAR* 49:D412 |
 | [biotite](https://www.biotite-python.org/) | Kunzmann & Hamacher 2018, *BMC Bioinformatics* 19:346 |
 
 Conservation is computed in-library by Jensen-Shannon divergence

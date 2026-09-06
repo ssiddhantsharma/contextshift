@@ -11,7 +11,17 @@ import typer
 from . import __version__, join, report, stats
 from .partition import Partition, Provenance, adjusted_rand_index
 from .schema import ALL_SCHEMAS
-from .stages import conserve, derep, diverge, families, loci, mapping, toolchain_report
+from .stages import (
+    conserve,
+    derep,
+    diverge,
+    families,
+    loci,
+    mapping,
+    profiles,
+    structures,
+    toolchain_report,
+)
 
 app = typer.Typer(add_completion=False, help="Partition-aware functional divergence.")
 
@@ -198,6 +208,82 @@ def diverge_cmd(
         typer.echo(f"note: {n}")
     if comparisons_out:
         comps.to_parquet(comparisons_out, index=False)
+
+
+@app.command("typers")
+def typers_cmd(
+    a: Path = typer.Argument(..., help="first typer output"),
+    b: Path = typer.Argument(..., help="second typer output"),
+    format_a: str = typer.Option("cctyper", help="cctyper | defensefinder | padloc"),
+    format_b: str = typer.Option("defensefinder", help="cctyper | defensefinder | padloc"),
+    system: str = typer.Option(None, help="regex selecting one system family"),
+    coarse: bool = typer.Option(False, help="drop extra subtype granularity before comparing"),
+) -> None:
+    """Agreement between two typers' partitions, as an adjusted Rand index."""
+    readers = {
+        "defensefinder": lambda p: loci.parse_defensefinder(p, system=system),
+        "padloc": lambda p: loci.parse_padloc(p, system=system),
+        "cctyper": lambda p: loci.to_hits(loci.read_operons(p)),
+    }
+    for name in (format_a, format_b):
+        if name not in readers:
+            raise typer.BadParameter(f"unknown format {name!r}; choose from {sorted(readers)}")
+
+    frames = []
+    for path, fmt in ((a, format_a), (b, format_b)):
+        df = readers[fmt](path)
+        if coarse:
+            df = df.assign(subtype=df["subtype"].map(loci.coarse_subtype))
+        frames.append(loci.partition_from(df, "subtype", fmt, "as-reported"))
+
+    pa, pb = frames
+    shared = set(pa.labels) & set(pb.labels)
+    typer.echo(f"{format_a}: {len(pa.labels)} members, {len(pa.group_names)} groups")
+    typer.echo(f"{format_b}: {len(pb.labels)} members, {len(pb.group_names)} groups")
+    typer.echo(f"shared members: {len(shared)}")
+    typer.echo(f"adjusted rand : {adjusted_rand_index(pa, pb):.4f}")
+    disagree = [m for m in sorted(shared) if pa.labels[m] != pb.labels[m]]
+    typer.echo(f"disagreeing   : {len(disagree)}")
+    for m in disagree[:10]:
+        typer.echo(f"  {m}: {format_a}={pa.labels[m]}  {format_b}={pb.labels[m]}")
+
+
+@app.command("profiles")
+def profiles_cmd(
+    fasta: Path = typer.Argument(...),
+    out: Path = typer.Argument(..., help="assignment parquet"),
+    pfam: list[str] = typer.Option(..., "--pfam", help="Pfam accession, repeatable"),
+    hmmdir: Path = typer.Option(Path("hmms"), help="where to cache downloaded HMMs"),
+    evalue: float = typer.Option(1e-5),
+    min_margin: float = typer.Option(10.0, help="bits below which a call is ambiguous"),
+) -> None:
+    """Assign family membership by profile hit rather than by label."""
+    paths = [profiles.fetch_pfam(acc, hmmdir) for acc in pfam]
+    combined = profiles.combine(paths, Path(hmmdir) / "combined.hmm")
+    hits = profiles.scan(fasta, combined, evalue=evalue)
+    assigned = profiles.assign(hits)
+    assigned.to_parquet(out, index=False)
+    typer.echo(f"{len(assigned)} sequences assigned -> {out}")
+    typer.echo(assigned["family"].value_counts().to_string())
+    amb = profiles.ambiguous(assigned, min_margin=min_margin)
+    if len(amb):
+        typer.echo(f"ambiguous (margin < {min_margin} bits): {len(amb)}")
+
+
+@app.command("structures")
+def structures_cmd(
+    accessions: Path = typer.Argument(..., help="one UniProt accession per line"),
+    outdir: Path = typer.Argument(..., help="where to write mmCIF files"),
+    report_to: Path = typer.Option(None, help="write the model table here"),
+) -> None:
+    """Fetch AlphaFold models, gating on confidence."""
+    accs = [a.strip() for a in Path(accessions).read_text().split() if a.strip()]
+    df, notes = structures.fetch_many(accs, outdir)
+    typer.echo(f"{len(df)} models, {int(df['usable'].sum()) if len(df) else 0} usable")
+    for n in notes[:20]:
+        typer.echo(f"  {n}")
+    if report_to:
+        df.to_parquet(report_to, index=False)
 
 
 @app.command("map")
