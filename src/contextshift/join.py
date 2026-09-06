@@ -39,13 +39,26 @@ class JoinThresholds:
 
     conserved_rate: float = 0.5
     variable_rate: float = 1.5
+    #: Posterior cutoff for DIVERGE-style Qk output (its User Guide uses 0.9).
+    qk: float = 0.9
+    #: p/q cutoff, used only for methods that genuinely produce p-values.
     alpha: float = 0.05
     min_occupancy: float = 0.5
 
 
-def _significant(df: pd.DataFrame, alpha: float) -> pd.Series:
-    col = "qvalue" if "qvalue" in df.columns and df["qvalue"].notna().any() else "pvalue"
-    return df[col].notna() & (df[col] <= alpha)
+def _significant(df: pd.DataFrame, t: JoinThresholds) -> pd.Series:
+    """Call a site significant.
+
+    DIVERGE reports a posterior probability Qk, not a p-value, so a posterior
+    is thresholded directly and never routed through a p-value correction.
+    A q-value is preferred over a raw p-value when one is present.
+    """
+    if "posterior" in df.columns and df["posterior"].notna().any():
+        return df["posterior"].notna() & (df["posterior"] >= t.qk)
+    for col in ("qvalue", "pvalue"):
+        if col in df.columns and df[col].notna().any():
+            return df[col].notna() & (df[col] <= t.alpha)
+    return pd.Series(False, index=df.index)
 
 
 def classify(
@@ -58,7 +71,7 @@ def classify(
     sites = SITES.validate(sites.copy())
     conservation = CONSERVATION.validate(conservation.copy())
 
-    sites["significant"] = _significant(sites, t.alpha)
+    sites["significant"] = _significant(sites, t)
 
     calls = (
         sites.pivot_table(

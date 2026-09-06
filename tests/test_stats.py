@@ -41,8 +41,7 @@ def sites_frame(n_pairs=2, n_sites=50):
                     "group_b": f"B{pair}",
                     "column": c,
                     "test": "type2",
-                    "theta": 0.3,
-                    "statistic": 5.0,
+                    "posterior": None,
                     "pvalue": (c + 1) / (n_sites * 20),
                 }
             )

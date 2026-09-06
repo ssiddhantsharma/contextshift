@@ -107,15 +107,34 @@ SITES = TableSchema(
         Column("partition", "string"),
         Column("group_a", "string"),
         Column("group_b", "string"),
+        # Alignment column, 0-based. DIVERGE returns a sparse set of kept
+        # positions rather than every column, so this is not a dense range.
         Column("column", "Int64"),
         Column("test", "string"),
-        Column("theta", "float64", nullable=True),
-        Column("statistic", "float64", nullable=True),
-        Column("posterior", "float64", required=False, nullable=True),
-        Column("pvalue", "float64", nullable=True),
+        # Posterior probability Qk in [0, 1]. This is what DIVERGE reports;
+        # it is not a p-value and must not be fed to a p-value correction.
+        Column("posterior", "float64", nullable=True),
+        # Only for divergence methods that genuinely produce p-values.
+        Column("pvalue", "float64", required=False, nullable=True),
         Column("qvalue", "float64", required=False, nullable=True),
     ),
     key=("family", "partition", "group_a", "group_b", "column", "test"),
+)
+
+COMPARISONS = TableSchema(
+    name="comparisons",
+    columns=(
+        Column("family", "string"),
+        Column("partition", "string"),
+        Column("group_a", "string"),
+        Column("group_b", "string"),
+        Column("test", "string"),
+        # Per-comparison coefficients: theta, alpha, standard errors. These are
+        # properties of the group pair, not of any single site.
+        Column("parameter", "string"),
+        Column("value", "float64", nullable=True),
+    ),
+    key=("family", "partition", "group_a", "group_b", "test", "parameter"),
 )
 
 CONSERVATION = TableSchema(
@@ -173,5 +192,5 @@ MAPPING = TableSchema(
 
 ALL_SCHEMAS: dict[str, TableSchema] = {
     s.name: s
-    for s in (MEMBERS, DEREP, SITES, CONSERVATION, NEIGHBOURS, MOTIFS, MAPPING)
+    for s in (MEMBERS, DEREP, SITES, COMPARISONS, CONSERVATION, NEIGHBOURS, MOTIFS, MAPPING)
 }
