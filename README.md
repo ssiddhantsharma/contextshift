@@ -120,11 +120,6 @@ Conservation is computed in-library by Jensen-Shannon divergence
 Rate4Site (Pupko et al. 2002) is kept as an alternative.
 
 ## Status
-
-Early. Every stage has producing code and every schema a producer. 136 tests,
-including live runs of DIVERGE, MAFFT and MMseqs2. The MEME and Rate4Site
-adapters are optional and unrun.
-
 Type-I divergence needs a one-line fix for a defect in DIVERGE 4.1.0
 ([upstream PR](https://github.com/zjupgx/diverge4/pull/8)). The library applies
 it as a shim and records that it did, so a Type-I result is never mistaken for
