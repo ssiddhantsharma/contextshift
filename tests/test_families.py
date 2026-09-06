@@ -1,8 +1,4 @@
-"""Fusion and paralogue handling.
-
-The fused case is modelled on a real one: a subtype whose adaptation module
-declares two gene identities in a single slot, so one ORF carries both.
-"""
+"""Fusion and paralogue handling."""
 
 import pandas as pd
 import pytest

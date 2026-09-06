@@ -1,17 +1,11 @@
-"""Join divergence calls to conservation to classify each alignment column.
+"""Classify each alignment column by crossing divergence with conservation.
 
-Divergence alone cannot say whether a site matters; conservation alone cannot
-see a between-group shift because it averages over the groups. The cross of the
-two is the result:
-
-    conserved everywhere, not divergent   -> core        (catalytic; negative control)
-    conserved within groups, differs      -> determinant (the answer)
-    constrained in one group only         -> relaxed     (Type-I)
-    variable everywhere                   -> variable
-    conserved everywhere AND divergent    -> suspect     (usually misalignment)
-
-Columns are never dropped. A column whose inputs are missing is emitted with
-status set, so a site cannot vanish by accident.
+    core        conserved everywhere, not divergent
+    determinant conserved within groups, differs between
+    relaxed     constrained in one group only
+    variable    variable everywhere
+    suspect     conserved everywhere yet divergent
+    unknown     conservation missing
 """
 
 from __future__ import annotations
@@ -39,20 +33,13 @@ class JoinThresholds:
 
     conserved_rate: float = 0.5
     variable_rate: float = 1.5
-    #: Posterior cutoff for DIVERGE-style Qk output (its User Guide uses 0.9).
     qk: float = 0.9
-    #: p/q cutoff, used only for methods that genuinely produce p-values.
     alpha: float = 0.05
     min_occupancy: float = 0.5
 
 
 def _significant(df: pd.DataFrame, t: JoinThresholds) -> pd.Series:
-    """Call a site significant.
-
-    DIVERGE reports a posterior probability Qk, not a p-value, so a posterior
-    is thresholded directly and never routed through a p-value correction.
-    A q-value is preferred over a raw p-value when one is present.
-    """
+    """Threshold a posterior directly; fall back to q- or p-value."""
     if "posterior" in df.columns and df["posterior"].notna().any():
         return df["posterior"].notna() & (df["posterior"] >= t.qk)
     for col in ("qvalue", "pvalue"):
@@ -66,7 +53,7 @@ def classify(
     conservation: pd.DataFrame,
     thresholds: JoinThresholds | None = None,
 ) -> pd.DataFrame:
-    """Return one row per (family, partition, group pair, column) with a class."""
+    """One row per (family, partition, group pair, column) with a class."""
     t = thresholds or JoinThresholds()
     sites = SITES.validate(sites.copy())
     conservation = CONSERVATION.validate(conservation.copy())
@@ -164,7 +151,7 @@ def classify(
 
 
 def summary(classified: pd.DataFrame) -> pd.DataFrame:
-    """Counts per class and status. Reported alongside results, never as a filter."""
+    """Counts per class and status."""
     if classified.empty:
         return pd.DataFrame(columns=["family", "partition", "class", "status", "n"])
     return (

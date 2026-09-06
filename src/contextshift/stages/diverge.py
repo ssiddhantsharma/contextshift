@@ -36,10 +36,8 @@ from ..schema import COMPARISONS, SITES
 TYPE1 = "type1"
 TYPE2 = "type2"
 
-#: DIVERGE positions index the alignment from zero.
 POSITION_BASE = 0
 
-#: Conventional posterior cutoff for calling a site (DIVERGE User Guide).
 DEFAULT_QK = 0.9
 
 BROKEN_UPSTREAM = {
@@ -77,18 +75,13 @@ def _read_tree(newick: str):
 
 
 def tree_depth(newick: str) -> int:
-    """Depth exactly as DIVERGE measures it.
-
-    DIVERGE uses `max(len(tree.trace(root, leaf)) for leaf in terminals)`, which
-    counts edges from the root to the deepest leaf. Counting nested parentheses
-    instead gives a different number and admits trees DIVERGE rejects.
-    """
+    """Edges from root to deepest leaf, as DIVERGE measures it."""
     tree = _read_tree(newick)
     return max(len(tree.trace(tree.root, clade)) for clade in tree.get_terminals())
 
 
 def check_tree(newick: str, min_depth: int = 3, min_leaves: int = 4) -> TreeCheck:
-    """DIVERGE requires depth STRICTLY greater than 3, despite saying "less than 3"."""
+    """DIVERGE requires depth strictly greater than min_depth."""
     problems: list[str] = []
     try:
         tree = _read_tree(newick)
@@ -114,7 +107,7 @@ def conform(newick: str, min_depth: int = 3, min_leaves: int = 4) -> tuple[str, 
 def write_cluster_trees(
     trees: dict[str, str], outdir: Path, min_depth: int = 3, min_leaves: int = 4
 ) -> tuple[dict[str, Path], dict[str, TreeCheck]]:
-    """Write one conformant Newick per group. Rejects are returned, not dropped."""
+    """Write one Newick per group; rejects are returned, not dropped."""
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
     paths: dict[str, Path] = {}
@@ -143,7 +136,7 @@ def _import_diverge():
 
 
 def needs_shim() -> bool:
-    """True if this diverge build has the undefined-get_colnames defect."""
+    """True if this build lacks get_colnames (diverge 4.1.0 defect)."""
     try:
         import diverge.binding as binding
     except ImportError:
@@ -152,11 +145,7 @@ def needs_shim() -> bool:
 
 
 def apply_shim() -> bool:
-    """Install the missing get_colnames. Returns True if it was needed.
-
-    Verified against 4.1.0: the C++ calculators already return display-ready
-    cluster-pair labels such as "A/B", so the function is a pass-through.
-    """
+    """Install the missing get_colnames. True if it was needed."""
     if not needs_shim():
         return False
     import diverge.binding as binding
@@ -174,7 +163,7 @@ def available() -> bool:
 
 
 def column_label(group_a: str, group_b: str) -> str:
-    """DIVERGE names the result column by joining the cluster names with '/'."""
+    """DIVERGE joins cluster names with '/'."""
     return f"{group_a}/{group_b}"
 
 
@@ -186,11 +175,7 @@ def normalise(
     group_b: str,
     test: str,
 ) -> pd.DataFrame:
-    """Map a DIVERGE results frame onto the SITES schema.
-
-    The position is the index, and the single data column is the posterior Qk
-    for this cluster pair.
-    """
+    """Map a DIVERGE results frame onto the SITES schema."""
     label = column_label(group_a, group_b)
     if label in results.columns:
         posterior = results[label]
@@ -223,7 +208,7 @@ def normalise_summary(
     group_b: str,
     test: str,
 ) -> pd.DataFrame:
-    """Per-comparison coefficients (theta, alpha, SE) from `.summary`."""
+    """Per-comparison coefficients from `.summary`."""
     label = column_label(group_a, group_b)
     series = summary[label] if label in summary.columns else summary.iloc[:, 0]
     rows = [
@@ -252,10 +237,9 @@ def run_pair(
     include_type1: bool = True,
     allow_shim: bool = True,
 ) -> tuple[pd.DataFrame, pd.DataFrame, list[str]]:
-    """Run Type-II and, unless disabled, Type-I for one pair of groups.
+    """Run Type-II and, unless disabled, Type-I for one group pair.
 
-    Returns (sites, comparisons, notes). Notes record the shim if it was used,
-    so a Type-I result can never look like it came from stock upstream.
+    Returns (sites, comparisons, notes); notes record any shim use.
     """
     diverge = _import_diverge()
     names = [group_a, group_b]
@@ -294,7 +278,7 @@ def run_partition(
     family: str,
     skip_underpowered: bool = False,
 ) -> tuple[pd.DataFrame, pd.DataFrame, list[str], list[str]]:
-    """Run every group pair. Skipped pairs are returned, never silently dropped."""
+    """Run every group pair; skipped pairs are returned, not dropped."""
     skipped: list[str] = []
     notes: list[str] = []
     weak = set(partition.underpowered_groups())

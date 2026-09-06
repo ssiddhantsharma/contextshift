@@ -1,8 +1,4 @@
-"""Neighbourhood parsing and group comparison.
-
-The fixture reproduces the FlaGs `_operon.tsv` column layout exactly as its
-writer emits it: positional, unlabelled, `acc|species` and `acc#n`.
-"""
+"""Neighbourhood parsing and group comparison."""
 
 import pytest
 

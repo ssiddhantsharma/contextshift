@@ -1,9 +1,4 @@
-"""The library must stay target-agnostic.
-
-Domain findings belong in a study repo that depends on this one. If a term from
-a specific biological question appears in library source, the abstraction has
-sprung a leak and the study has started leaking into the tool.
-"""
+"""The library stays target-agnostic."""
 
 import re
 from pathlib import Path

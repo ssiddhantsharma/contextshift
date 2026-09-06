@@ -1,10 +1,4 @@
-"""Tree shape rules, checked against DIVERGE's own implementation where possible.
-
-The rule is not "nesting depth >= 3". DIVERGE computes
-`max(len(tree.trace(root, leaf)) for leaf in terminals)` and requires it to be
-STRICTLY greater than 3, while its error message says "less than 3". Counting
-parentheses instead admits trees DIVERGE rejects.
-"""
+"""Tree shape rules, cross-checked against diverge.binding.check_tree."""
 
 import pytest
 

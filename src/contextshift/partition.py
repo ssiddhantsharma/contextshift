@@ -1,8 +1,7 @@
-"""A partition is a labelling of family members into groups to be contrasted.
+"""A labelling of family members into groups to be contrasted.
 
-Everything downstream (divergence, motifs, neighbourhoods) is parameterised by
-one of these. The label source is deliberately external: it never comes from
-cutting the tree the analysis is about to test.
+Labels come from outside the phylogeny, never from cutting the tree the
+analysis is about to test.
 """
 
 from __future__ import annotations
@@ -17,7 +16,7 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class Provenance:
-    """Where labels came from. Recorded so a stale scheme is visible, not silent."""
+    """Where labels came from."""
 
     source: str
     version: str = "unknown"
@@ -59,9 +58,7 @@ class Partition:
     labels: dict[str, str]
     provenance: Provenance
     weights: dict[str, float] = field(default_factory=dict)
-    #: Per-group qualifications that must travel with any result, e.g. a group
-    #: the labelling calls one thing that the phylogeny does not recover as a
-    #: clade. Carried, not enforced: it changes interpretation, not arithmetic.
+    #: Per-group qualifications carried through to reports.
     caveats: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -95,14 +92,11 @@ class Partition:
         return dict(Counter(self.labels.values()))
 
     def effective_counts(self) -> dict[str, float]:
-        """Independent evidence per group: the summed weights.
+        """Independent evidence per group: summed weights.
 
-        Dereplication gives each cluster one unit of weight, shared among its
-        members, so this counts clusters rather than sequences. A hundred copies
-        of one sequence contribute one, not a hundred.
-
-        Kish effective N is deliberately not used: with equal weights it returns
-        the raw count, which is the precise failure dereplication exists to fix.
+        Dereplication gives each cluster one unit shared among its members, so
+        this counts clusters, not sequences. Kish effective N is not used: with
+        equal weights it returns the raw count.
         """
         return {
             label: sum(self.weight(m) for m in members)
@@ -118,7 +112,7 @@ class Partition:
         ]
 
     def qualified_groups(self) -> dict[str, str]:
-        """Groups carrying a caveat, so a report can never omit them."""
+        """Groups carrying a caveat."""
         return {g: c for g, c in self.caveats.items() if c}
 
     def underpowered_groups(self) -> list[str]:
@@ -142,7 +136,7 @@ class Partition:
         return self.restrict([m for m, g in self.labels.items() if g not in drop])
 
     def cross(self, other: Partition, sep: str = "|") -> Partition:
-        """Cell-wise product of two partitions over their shared members."""
+        """Cell-wise product over shared members."""
         shared = sorted(set(self.labels) & set(other.labels))
         if not shared:
             raise ValueError(f"{self.name} and {other.name} share no members")
@@ -197,7 +191,7 @@ class Partition:
 
 
 def adjusted_rand_index(a: Partition, b: Partition) -> float:
-    """ARI over the members the two partitions share. 1.0 = identical grouping."""
+    """ARI over shared members; 1.0 is identical grouping."""
     shared = sorted(set(a.labels) & set(b.labels))
     n = len(shared)
     if n < 2:

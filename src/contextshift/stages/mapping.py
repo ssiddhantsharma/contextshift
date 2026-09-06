@@ -1,11 +1,4 @@
-"""Alignment column -> structure residue, and distance to features of interest.
-
-This is where off-by-one errors hide: a column index, an ungapped sequence
-offset and a crystallographic residue number are three different things, and
-nothing complains when they are confused. Every mapping produced here is
-checked by comparing the aligned residue letter against the residue actually
-present in the structure, and any mismatch is reported rather than tolerated.
-"""
+"""Alignment column to structure residue, and distance to named features."""
 
 from __future__ import annotations
 
@@ -42,7 +35,7 @@ class ChainResidues:
 
 
 def read_chain(path: Path, chain: str, model: int = 1) -> ChainResidues:
-    """Observed protein residues of one chain, in order, with author numbering."""
+    """Observed protein residues of one chain, in author numbering."""
     import biotite.structure as struc
     from biotite.structure.io.pdbx import CIFFile, get_structure
 
@@ -75,9 +68,8 @@ def map_columns(
 ) -> tuple[pd.DataFrame, list[str]]:
     """Map each non-gap alignment column to an author residue number.
 
-    Columns are 0-based, matching what DIVERGE reports. Returns the mapping and
-    a list of mismatches; with strict=True a mismatch raises instead, because a
-    silently wrong mapping poisons every downstream structural claim.
+    Columns are 0-based, matching DIVERGE. Returns the mapping and any
+    residue-letter mismatches; strict=True raises on mismatch.
     """
     ungapped = [(i, c) for i, c in enumerate(aligned_sequence) if c not in GAPS]
     if len(ungapped) != len(residues.resnums):
@@ -115,7 +107,7 @@ def map_columns(
 
 
 def round_trip(mapping: pd.DataFrame, aligned_sequence: str, residues: ChainResidues) -> bool:
-    """Column -> resnum -> residue letter must return the aligned letter."""
+    """Column to resnum to residue letter must return the aligned letter."""
     by_num = dict(zip(residues.resnums, residues.resnames, strict=True))
     for r in mapping.itertuples(index=False):
         letter = aligned_sequence[int(r.column)]
@@ -133,10 +125,9 @@ def distance_to(
     target_res_names: tuple[str, ...] = (),
     model: int = 1,
 ) -> pd.DataFrame:
-    """Minimum heavy-atom distance from each residue of `chain` to a target set.
+    """Minimum heavy-atom distance from each residue to a target set.
 
-    Targets are named by chain (e.g. bound DNA) or by residue name (e.g. a
-    ligand or metal). Returns NaN for residues with no target atom, never 0.
+    Targets are named by chain or by residue name. NaN where absent, never 0.
     """
     from biotite.structure.io.pdbx import CIFFile, get_structure
 
@@ -169,7 +160,7 @@ def distance_to(
 
 
 def annotate(sites: pd.DataFrame, mapping: pd.DataFrame, distances: pd.DataFrame) -> pd.DataFrame:
-    """Attach resnum and distance to classified sites. Unmapped columns are kept."""
+    """Attach resnum and distance to sites, keeping unmapped columns."""
     out = sites.merge(mapping[["family", "column", "resnum", "resname"]],
                       on=["family", "column"], how="left")
     return out.merge(distances, on="resnum", how="left")

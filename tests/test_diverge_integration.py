@@ -1,9 +1,4 @@
-"""Runs DIVERGE for real, against the fixtures shipped with DIVERGE itself.
-
-Every constant asserted here was measured from a live 4.1.0 run, not taken
-from documentation. If a future DIVERGE changes any of them, this fails loudly
-rather than letting a silently different convention through.
-"""
+"""Live DIVERGE run against the fixtures it ships. Constants are measured."""
 
 from pathlib import Path
 

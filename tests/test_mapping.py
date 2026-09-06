@@ -1,9 +1,4 @@
-"""Column -> residue mapping, checked against real coordinates.
-
-The fixture is chain A of PDB 4IC1 (Cas4-family nuclease SSO0001, X-ray 2.35 A),
-which carries both a [4Fe-4S] cluster and a catalytic Mn. Anchor residue numbers
-below were measured from these coordinates, not taken from any paper.
-"""
+"""Column to residue mapping, checked against 4IC1 chain A coordinates."""
 
 from pathlib import Path
 

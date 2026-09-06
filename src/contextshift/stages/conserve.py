@@ -1,8 +1,6 @@
-"""Per-site evolutionary rate.
+"""Per-site evolutionary rate via Rate4Site, ConSurf's engine.
 
-Rate4Site is ConSurf's engine. The web server maps one query onto one structure
-and does not scale to a partitioned family, so the engine is called directly and
-run once per scope: the whole family, and each group on its own.
+Run once per scope: the whole family, then each group alone.
 """
 
 from __future__ import annotations
@@ -32,6 +30,7 @@ def rate4site(alignment: Path, family: str, scope: str, tree: Path | None = None
 
 
 def parse_rate4site(path: Path, family: str, scope: str) -> pd.DataFrame:
+    # layout unverified against real output; see VERIFICATION.md
     rows = []
     for line in Path(path).read_text().splitlines():
         if line.startswith("#") or not line.strip():

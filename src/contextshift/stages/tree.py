@@ -1,7 +1,6 @@
-"""Phylogeny.
+"""Maximum-likelihood phylogeny with UFBoot supports.
 
-Maximum likelihood with UFBoot rather than FastTree's local supports, because
-DIVERGE consumes the tree as if its topology were correct.
+Flags are unverified against a real iqtree2; see VERIFICATION.md.
 """
 
 from __future__ import annotations

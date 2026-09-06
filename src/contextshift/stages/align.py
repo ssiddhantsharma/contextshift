@@ -1,9 +1,4 @@
-"""Multiple sequence alignment.
-
-Structure-guided alignment is the default because site-level tests inherit
-every alignment error, and these families are divergent enough that sequence
-alignment alone puts non-homologous columns together.
-"""
+"""Multiple sequence alignment; structure-guided by preference."""
 
 from __future__ import annotations
 

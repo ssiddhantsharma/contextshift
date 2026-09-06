@@ -118,8 +118,9 @@ conformance and the drop zone are implemented and tested (60 tests). The
 `type`, `families`, `map`, `neighbours` and `report` stages are not yet built,
 so `members`, `neighbours` and `mapping` currently have no producing code.
 
-Parsers for Rate4Site and MEME output are written against documented formats
-and are **not yet checked against real tool output**.
+External-tool contracts and how each was checked are in
+[VERIFICATION.md](VERIFICATION.md). The Rate4Site and MEME parsers and the
+IQ-TREE flags are still unchecked against real output.
 
 ## License
 

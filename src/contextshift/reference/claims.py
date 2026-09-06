@@ -1,8 +1,7 @@
 """Published claims expressed as executable checks.
 
-A claim is a statement taken from a paper, restated so the pipeline can agree
-or disagree with it. Disagreement is a result, not an error, so a failing claim
-never raises: it is recorded with its observed value.
+Disagreement is a result, so a failing claim records its observed value
+rather than raising.
 """
 
 from __future__ import annotations

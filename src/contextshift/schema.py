@@ -1,9 +1,4 @@
-"""Stage boundary contracts.
-
-Every stage reads and writes a declared table, so a caller can enter the
-pipeline at any point with their own data and be told immediately if it does
-not fit.
-"""
+"""Stage boundary contracts."""
 
 from __future__ import annotations
 
@@ -84,8 +79,7 @@ MEMBERS = TableSchema(
         Column("copy_index", "Int64", required=False, nullable=True),
         Column("hit_evalue", "float64", required=False, nullable=True),
     ),
-    # An ORF carrying two gene identities is one member_id under two families,
-    # so member_id alone does not identify a row.
+    # a fused ORF is one member_id under two families
     key=("member_id", "family"),
 )
 
@@ -109,14 +103,12 @@ SITES = TableSchema(
         Column("partition", "string"),
         Column("group_a", "string"),
         Column("group_b", "string"),
-        # Alignment column, 0-based. DIVERGE returns a sparse set of kept
-        # positions rather than every column, so this is not a dense range.
+        # 0-based; DIVERGE returns a sparse set of kept positions
         Column("column", "Int64"),
         Column("test", "string"),
-        # Posterior probability Qk in [0, 1]. This is what DIVERGE reports;
-        # it is not a p-value and must not be fed to a p-value correction.
+        # Qk in [0, 1]; not a p-value, never feed to a p-value correction
         Column("posterior", "float64", nullable=True),
-        # Only for divergence methods that genuinely produce p-values.
+        # only for methods that produce p-values
         Column("pvalue", "float64", required=False, nullable=True),
         Column("qvalue", "float64", required=False, nullable=True),
     ),
@@ -131,8 +123,7 @@ COMPARISONS = TableSchema(
         Column("group_a", "string"),
         Column("group_b", "string"),
         Column("test", "string"),
-        # Per-comparison coefficients: theta, alpha, standard errors. These are
-        # properties of the group pair, not of any single site.
+        # theta, alpha, SE: properties of the group pair, not of a site
         Column("parameter", "string"),
         Column("value", "float64", nullable=True),
     ),

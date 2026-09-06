@@ -1,9 +1,7 @@
-"""Motif discovery, run per group rather than over the pooled family.
+"""Motif discovery per group.
 
-Run on a pooled alignable set, MEME mostly restates what the alignment already
-shows. Run separately per group and compared, it can find a motif private to
-one group; that comparison is what this stage is for. Width is not fixed,
-because real motif widths are not.
+Run on a pooled alignable set this mostly restates the alignment; run per
+group and compared it can find a group-private motif. Width is not fixed.
 """
 
 from __future__ import annotations
@@ -45,6 +43,7 @@ def meme(
 
 
 def parse_meme(path: Path, family: str, partition: str, group: str) -> pd.DataFrame:
+    # layout unverified against real output; see VERIFICATION.md
     text = Path(path).read_text()
     rows = [
         {
@@ -64,7 +63,7 @@ def parse_meme(path: Path, family: str, partition: str, group: str) -> pd.DataFr
 
 
 def private_motifs(motifs: pd.DataFrame) -> pd.DataFrame:
-    """Motifs whose consensus occurs in exactly one group of a partition."""
+    """Motifs whose consensus occurs in exactly one group."""
     df = MOTIFS.validate(motifs.copy())
     spread = df.groupby(["family", "partition", "consensus"])["group"].nunique()
     spread.name = "n_groups"

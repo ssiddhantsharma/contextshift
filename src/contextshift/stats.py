@@ -1,9 +1,7 @@
 """Multiple-testing correction.
 
-Sites are tested per family, per group pair, per alignment column. Correcting
-within one comparison and reporting across all of them is how a family-wide
-scan manufactures confident noise, so the default correction is global over the
-whole sites table.
+Sites are tested per family, per group pair, per column, so the default
+correction is global over the whole table.
 """
 
 from __future__ import annotations
@@ -64,7 +62,7 @@ def add_qvalues(sites: pd.DataFrame, scope: str = GLOBAL) -> pd.DataFrame:
 
 
 def testing_burden(sites: pd.DataFrame) -> pd.DataFrame:
-    """How many tests each comparison contributed. Reported next to results."""
+    """Tests contributed by each comparison."""
     df = SITES.validate(sites.copy())
     return (
         df.groupby(["family", "partition", "group_a", "group_b", "test"], dropna=False)

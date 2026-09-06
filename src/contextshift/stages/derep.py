@@ -1,9 +1,6 @@
-"""Dereplication with weights retained.
+"""Dereplication with cluster size retained as a weight.
 
-Collapsing near-identical sequences is what stops a signal from being an
-artefact of how many times a species was sequenced. The cluster size is kept as
-a weight rather than discarded, so effective sample size stays computable
-downstream.
+Weights let effective sample size stay computable downstream.
 """
 
 from __future__ import annotations
@@ -65,13 +62,13 @@ def build(pairs: pd.DataFrame, level: str = SEQUENCE) -> pd.DataFrame:
 
 
 def representative_weights(derep: pd.DataFrame) -> dict[str, float]:
-    """Weight per representative: one unit of independent evidence per cluster."""
+    """One unit of independent evidence per cluster."""
     df = DEREP.validate(derep.copy())
     reps = df.drop_duplicates(subset=["representative_id"])
     return {str(r.representative_id): 1.0 for r in reps.itertuples(index=False)}
 
 
 def member_weights(derep: pd.DataFrame) -> dict[str, float]:
-    """Weight per member: cluster mass shared across its members."""
+    """Cluster mass shared across its members."""
     df = DEREP.validate(derep.copy())
     return {str(r.member_id): float(r.weight) for r in df.itertuples(index=False)}

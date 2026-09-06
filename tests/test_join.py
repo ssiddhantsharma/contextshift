@@ -1,4 +1,4 @@
-"""The 2x2 is the result, so its corners are pinned here."""
+"""The 2x2 corners."""
 
 import pandas as pd
 

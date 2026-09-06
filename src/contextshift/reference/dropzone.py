@@ -1,9 +1,7 @@
 """Reference artifacts from a prior study, used to score this pipeline.
 
-Dropped files are never substituted for computed results. Each slot produces a
-comparison, so "we agree with the published study" and "we overwrote our answer
-with theirs" can never be confused. Slots that are still empty are reported as
-empty rather than skipped, and files nothing expects are surfaced too.
+Dropped files never substitute for computed results; each slot produces a
+comparison.
 """
 
 from __future__ import annotations
@@ -69,7 +67,7 @@ class DropZone:
         return [s for s in self.slots if not (self.root / s.filename).exists()]
 
     def unmapped(self) -> list[Path]:
-        """Files in the drop zone that no slot claims. Surfaced, never ignored."""
+        """Files in the drop zone that no slot claims."""
         if not self.root.exists():
             return []
         return sorted(

@@ -1,16 +1,4 @@
-"""Group typed gene hits into families, one row per (ORF, gene) assignment.
-
-Three things go wrong here and none of them raise on their own:
-
-- One ORF can carry two gene identities. A fused locus is a real biological
-  observation, not a parse error, and dropping it quietly biases the family.
-- One locus can carry two copies of the same gene that do different jobs.
-  Collapsing them destroys exactly the difference an analysis is looking for.
-- Two genes can be paralogues under one loose name. Families are keyed on the
-  gene label as given, so distinct labels are never merged here.
-
-Everything excluded is counted and returned.
-"""
+"""Group typed gene hits into families, one row per (ORF, gene)."""
 
 from __future__ import annotations
 
@@ -58,10 +46,9 @@ def build(
 ) -> tuple[pd.DataFrame, FamilyReport]:
     """Turn gene hits into a MEMBERS table.
 
-    `hits` needs member_id, genome_id, gene and locus_id; start/end/strand and
-    hit_evalue are used when present. Copies of one gene within one locus are
-    numbered from 1 in `order_by` order, so a second copy is never merged into
-    the first.
+    Needs member_id, genome_id, gene, locus_id; uses start/end/strand and
+    hit_evalue when present. Copies of one gene within a locus are numbered
+    from 1 in `order_by` order.
     """
     if fusion_policy not in POLICIES:
         raise ValueError(f"fusion_policy must be one of {POLICIES}")
@@ -105,19 +92,19 @@ def build(
     ] if c in df.columns]
     out = df[keep].reset_index(drop=True)
 
-    # one row per ORF per gene: a fused ORF legitimately appears once per identity
+    # a fused ORF appears once per gene identity
     out = out.drop_duplicates(subset=["member_id", "family"])
     return MEMBERS.validate(out.assign(member_id=out["member_id"].astype("string"))), report
 
 
 def family_key(row) -> str:
-    """Stable name for a family, distinguishing copies within a locus."""
+    """Family name, suffixed when it is not the first copy in a locus."""
     idx = int(row.copy_index) if pd.notna(row.copy_index) else 1
     return f"{row.family}-{idx}" if idx > 1 else str(row.family)
 
 
 def split_by_partition(members: pd.DataFrame, labels: dict[str, str]) -> dict[str, pd.DataFrame]:
-    """Split a family's members by a label, keeping unlabelled members visible."""
+    """Split members by label, keeping unlabelled members visible."""
     df = members.copy()
     df["_group"] = df["member_id"].map(labels).fillna("unlabelled")
     return {g: sub.drop(columns="_group") for g, sub in df.groupby("_group")}
