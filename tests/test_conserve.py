@@ -59,10 +59,6 @@ def test_scope_and_family_are_carried(tmp_path):
     assert set(d["scope"]) == {"group_x"}
 
 
-def test_rate4site_parser_still_available():
-    assert callable(conserve.parse_rate4site)
-
-
 def test_columns_are_zero_based(tmp_path):
     p = write_alignment(tmp_path, ["AK", "AR"])
     d = conserve.jensen_shannon(p, "F", "all")

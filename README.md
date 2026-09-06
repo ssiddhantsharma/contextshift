@@ -1,18 +1,21 @@
 # contextshift
 
+[![ci](https://github.com/ssiddhantsharma/contextshift/actions/workflows/ci.yml/badge.svg)](https://github.com/ssiddhantsharma/contextshift/actions/workflows/ci.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](pyproject.toml)
+
 Find the residues that distinguish one group of a protein family from another,
 where the grouping is supplied from outside the phylogeny.
 
 ## Why
 
-Functional-divergence methods normally cut a tree into subfamilies and test
-those. That works only when the grouping you care about is monophyletic. In
-many prokaryotic families it is not: the meaningful grouping comes from a
-profile assignment, a gene neighbourhood, or membership of a larger system, and
-it cuts across the tree.
+Functional-divergence methods cut a tree into subfamilies and test those. That
+works only when the grouping you care about is monophyletic. Often it is not:
+the meaningful grouping comes from a profile assignment, a gene neighbourhood,
+or membership of a larger system, and it cuts across the tree.
 
-`contextshift` takes the grouping as an input and records where it came from,
-so a stale or disputed classification is visible rather than silent.
+`contextshift` takes the grouping as input and records where it came from, so a
+stale or disputed classification stays visible.
 
 ## The result is a 2×2
 
@@ -41,10 +44,10 @@ contextshift doctor
 `doctor` reports which optional tools are on PATH. All are checked at call
 time, so the library imports without them.
 
-DIVERGE is not declared as a dependency because it cannot be installed from
-PyPI: the `diverge` sdist reads a `requirements.txt` it does not ship, and its
-default source tree is Windows-only. Build it from a clone using `src_linux`;
-[VERIFICATION.md](VERIFICATION.md) has the details.
+DIVERGE is not a declared dependency: it cannot be installed from PyPI, because
+its sdist reads a `requirements.txt` it does not ship and its default source
+tree is Windows-only. Build it from a clone using `src_linux`; see
+[VERIFICATION.md](VERIFICATION.md).
 
 ## Pipeline
 
@@ -74,7 +77,7 @@ contextshift power groups.json
 
 Dereplication keeps cluster size as a weight, and group size is reported as
 summed weights, so a hundred copies of one sequence count once. A group that
-looks large and is not gets flagged before you spend anything on it.
+looks large and is not gets flagged before you spend anything.
 
 ## Design rules
 
@@ -92,10 +95,11 @@ looks large and is not gets flagged before you spend anything on it.
 - [`VERIFICATION.md`](VERIFICATION.md) — every assumption about an external
   tool, and whether it was measured, documented, or is still unchecked.
 
-Two properties are asserted against DIVERGE itself: this library runs group
-pairs one at a time, and that is only sound because a pairwise estimate is
-byte-identical to extracting the same pair from a multi-cluster run
-(`tests/test_validation.py`).
+The design rests on one assumption, so it is asserted rather than argued: this
+library runs group pairs one at a time, which is sound only if a pairwise
+estimate is unaffected by the other clusters. Theta and every per-site
+posterior for a pair are byte-identical between a two-cluster run and the same
+pair taken from a three-cluster run (`tests/test_validation.py`).
 
 ## Tools
 
@@ -117,9 +121,9 @@ Rate4Site (Pupko et al. 2002) is kept as an alternative.
 
 ## Status
 
-Early. Every stage has producing code and every schema a producer. 142 tests,
+Early. Every stage has producing code and every schema a producer. 136 tests,
 including live runs of DIVERGE, MAFFT and MMseqs2. The MEME and Rate4Site
-adapters are unrun and optional.
+adapters are optional and unrun.
 
 Type-I divergence needs a one-line fix for a defect in DIVERGE 4.1.0
 ([upstream PR](https://github.com/zjupgx/diverge4/pull/8)). The library applies

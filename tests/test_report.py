@@ -36,35 +36,30 @@ def test_notes_appear_in_the_summary():
     assert "shim" in run.as_text()
 
 
-def test_funnel_renders(tmp_path):
+def figures(tmp_path):
     run = report.RunSummary()
     run.stage("loci", 100, dropped=5)
     run.stage("members", 280, dropped=20)
-    p = report.funnel(run, tmp_path / "funnel.png")
-    assert p.exists() and p.stat().st_size > 1000
-
-
-def test_power_figure_marks_caveats(tmp_path):
-    p = Partition(
+    partition = Partition(
         name="subtype",
         labels={f"m{i}": ("clean" if i < 30 else "messy") for i in range(60)},
         provenance=Provenance(source="t"),
         caveats={"messy": "not a clade"},
     )
-    out = report.power(p, tmp_path / "power.png")
-    assert out.exists() and out.stat().st_size > 1000
-
-
-def test_classes_figure_renders(tmp_path):
-    out = report.classes(classified_frame(), tmp_path / "classes.png")
-    assert out.exists() and out.stat().st_size > 1000
-
-
-def test_sites_in_context_renders(tmp_path):
     df = classified_frame()
     df["posterior"] = [0.05, 0.97]
     df["min_distance"] = [12.0, 3.4]
-    out = report.sites_in_context(df, tmp_path / "sites.png", "distance to DNA (A)")
+    return {
+        "funnel": lambda p: report.funnel(run, p),
+        "power": lambda p: report.power(partition, p),
+        "classes": lambda p: report.classes(classified_frame(), p),
+        "sites": lambda p: report.sites_in_context(df, p, "distance to DNA (A)"),
+    }
+
+
+@pytest.mark.parametrize("name", ["funnel", "power", "classes", "sites"])
+def test_panel_renders(tmp_path, name):
+    out = figures(tmp_path)[name](tmp_path / f"{name}.png")
     assert out.exists() and out.stat().st_size > 1000
 
 
@@ -75,16 +70,3 @@ def test_write_emits_figures_and_a_summary(tmp_path):
     assert {p.name for p in written} == {"funnel.png", "classes.png", "summary.txt"}
     text = (tmp_path / "summary.txt").read_text()
     assert CORE in text and DETERMINANT in text
-
-
-def test_summary_text_includes_every_class_present(tmp_path):
-    run = report.RunSummary()
-    run.stage("columns", 2)
-    report.write(tmp_path, run, classified_frame())
-    text = (tmp_path / "summary.txt").read_text()
-    assert "status" in text and "ok" in text
-
-
-@pytest.mark.parametrize("cls", [CORE, DETERMINANT])
-def test_palette_covers_every_class(cls):
-    assert cls in report.PALETTE

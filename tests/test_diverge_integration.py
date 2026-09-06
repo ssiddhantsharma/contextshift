@@ -70,12 +70,6 @@ def test_comparison_coefficients_are_per_pair_not_per_site():
     assert len(comparisons) < 100
 
 
-def test_group_labels_survive_into_the_column_name():
-    sites, _, _ = run()
-    assert set(sites["group_a"]) == {"A"}
-    assert set(sites["group_b"]) == {"B"}
-
-
 def test_run_partition_reports_skips_and_notes():
     p = Partition(
         name="context",

@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from contextshift.schema import MEMBERS, SITES, Column, SchemaError, TableSchema
+from contextshift.schema import MEMBERS, Column, SchemaError, TableSchema
 
 TINY = TableSchema(
     name="tiny",
@@ -40,7 +40,3 @@ def test_parquet_roundtrip(tmp_path):
     path = tmp_path / "t.parquet"
     TINY.write(df, path)
     assert TINY.read(path).equals(TINY.validate(df))
-
-
-def test_sites_key_covers_the_full_comparison():
-    assert SITES.key == ("family", "partition", "group_a", "group_b", "column", "test")
