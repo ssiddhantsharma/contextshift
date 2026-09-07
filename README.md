@@ -77,7 +77,7 @@ typed loci ─┬─ families ─▶ members ─derep─▶ weights
 ```
 
 Every stage boundary is a declared table (`contextshift schemas`), so you can
-enter anywhere with your own data and be told at once if it does not fit.
+enter anywhere with your own data.
 
 ```bash
 contextshift loci      cas_operons.tab hits.parquet \
@@ -92,14 +92,12 @@ contextshift map       family.aln ref.cif A ref_id mapping.parquet --family Cas4
 contextshift report    classified.parquet out/
 ```
 
-Two checks worth running before the analysis, not after:
+Worth running before the analysis, not after — whether two typers agree, and
+whether family membership is supported by a profile rather than a label:
 
 ```bash
-# do two independent typers agree on the grouping?
-contextshift typers cctyper_out/cas_operons.tab defense_finder_systems.tsv \
-                    --format-a cctyper --format-b defensefinder --system CAS
-
-# is family membership supported by a profile, or only by a label?
+contextshift typers   cctyper_out/cas_operons.tab defense_finder_systems.tsv \
+                      --format-a cctyper --format-b defensefinder --system CAS
 contextshift profiles family.faa assigned.parquet --pfam PF01930 --pfam PF06023
 ```
 
@@ -128,28 +126,21 @@ looks large and is not gets flagged before you spend anything.
 
 ## Verification
 
-- [`METHODS.md`](METHODS.md) — the source for every method, and why each
-  substitution was made.
-- [`VERIFICATION.md`](VERIFICATION.md) — every assumption about an external
-  tool, and whether it was measured, documented, or is still unchecked.
-
-Two stages are checked against published ground truth rather than against their
-own definitions, using the data supporting Capra & Singh 2007:
+Two stages are checked against published ground truth, using the data
+supporting Capra & Singh 2007:
 
 | | |
 |---|---|
 | catalytic sites score as more constrained | **57 of 57** proteins, mean AUC **0.924** |
 | residue-to-ligand distances match published values | **7 of 8** structures exact |
 
-The eighth has 1,410 deposited hydrogens, which the published distances include
-and this library deliberately does not. Small fixtures ship so the tests run
-offline; `benchmarks/capra_singh.py` reproduces the full numbers.
+```bash
+python benchmarks/capra_singh.py --workdir /tmp/cs   # reproduces both
+```
 
-The design also rests on one assumption, so it is asserted rather than argued: this
-library runs group pairs one at a time, which is sound only if a pairwise
-estimate is unaffected by the other clusters. Theta and every per-site
-posterior for a pair are byte-identical between a two-cluster run and the same
-pair taken from a three-cluster run (`tests/test_validation.py`).
+Fixtures ship, so the tests run offline. The eighth structure's difference, and
+every assumption this library makes about an external tool, are in
+[VERIFICATION.md](VERIFICATION.md). Method sources are in [METHODS.md](METHODS.md).
 
 ## Tools
 
