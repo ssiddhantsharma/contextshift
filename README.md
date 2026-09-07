@@ -133,7 +133,13 @@ looks large and is not gets flagged before you spend anything.
 - [`VERIFICATION.md`](VERIFICATION.md) — every assumption about an external
   tool, and whether it was measured, documented, or is still unchecked.
 
-The design rests on one assumption, so it is asserted rather than argued: this
+Conservation is checked against published ground truth, not only against its
+own definition: on the Capra & Singh benchmark, catalytic sites scored as more
+constrained in **57 of 57** proteins, pooled **AUC 0.924**. Five of those
+proteins ship as a fixture. That matters because the `core` class -- the
+negative control the whole 2x2 rests on -- assumes exactly this.
+
+The design also rests on one assumption, so it is asserted rather than argued: this
 library runs group pairs one at a time, which is sound only if a pairwise
 estimate is unaffected by the other clusters. Theta and every per-site
 posterior for a pair are byte-identical between a two-cluster run and the same

@@ -35,7 +35,7 @@ and how it was checked. "Measured" means the tool was run or its source read;
 | IQ-TREE `-B` (UFBoot, `>=1000`), `--prefix`, `-m MFP` | measured | `-h` on 2.4.0 (macOS) and 3.1.3 (container); full run wrote `.treefile` with UFBoot supports |
 | IQ-TREE binary name varies (`iqtree2`/`iqtree3`/`iqtree`) | measured | bioconda ships `iqtree3`; `Tool.aliases` resolves it |
 | MEME `meme.txt` MOTIF line layout | unchecked, optional | not packaged for Homebrew; not run. Motif discovery is optional, and per-group comparison is also obtainable from the per-scope conservation |
-| Jensen-Shannon conservation | measured | computed in-library; unit-tested for the conserved/variable ordering, gap handling and redundancy weighting |
+| Jensen-Shannon conservation | measured | in-library; unit-tested, and checked against Catalytic Site Atlas labels on the Capra & Singh benchmark: catalytic sites more constrained in 57/57 proteins, pooled AUC 0.924 |
 | Rate4Site `.res` layout | unchecked, optional | parser retained as an alternative; not run. The default conservation path no longer needs it |
 
 Anything marked unchecked should be confirmed against real tool output before
