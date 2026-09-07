@@ -6,6 +6,7 @@ its writer, where `species` is `<acc>|<species>` and `ids` is `<acc>#<n>`.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -103,3 +104,94 @@ def shared_and_private(conservation_table: pd.DataFrame) -> dict[str, object]:
         "private": private,
         "groups_with_none": [g for g, s in by_group.items() if not s],
     }
+
+
+# --- gene neighbourhoods from a GFF ----------------------------------------
+
+GFF_ID = re.compile(r"(?:^|;)(?:protein_id|ID)=(?:cds-)?([^;]+)")
+GFF_PRODUCT = re.compile(r"(?:^|;)product=([^;]+)")
+
+
+def read_gff_cds(path: Path) -> pd.DataFrame:
+    """Coding features from a GFF, ordered along each sequence."""
+    rows = []
+    for line in Path(path).read_text(errors="replace").splitlines():
+        if line.startswith("#"):
+            continue
+        f = line.split("\t")
+        if len(f) < 9 or f[2] != "CDS":
+            continue
+        ident = GFF_ID.search(f[8])
+        product = GFF_PRODUCT.search(f[8])
+        rows.append({
+            "contig": f[0],
+            "start": int(f[3]),
+            "end": int(f[4]),
+            "strand": f[6],
+            "member_id": ident.group(1) if ident else "",
+            "product": product.group(1).replace("%2C", ",") if product else "",
+        })
+    df = pd.DataFrame(rows).drop_duplicates(subset=["contig", "start", "end", "member_id"])
+    df = df.sort_values(["contig", "start"]).reset_index(drop=True)
+    df["index_on_contig"] = df.groupby("contig").cumcount()
+    return df
+
+
+def neighbourhood(
+    cds: pd.DataFrame, member_id: str, window: int = 5
+) -> tuple[pd.DataFrame, bool]:
+    """Genes within `window` positions of one member, and whether the window
+    ran off the end of the sequence.
+
+    The flag matters: a gene near a contig edge has an incomplete
+    neighbourhood, so concluding anything from the absence of a neighbour
+    there is unsound.
+    """
+    hit = cds[cds["member_id"] == member_id]
+    if hit.empty:
+        raise KeyError(member_id)
+    row = hit.iloc[0]
+    same = cds[cds["contig"] == row["contig"]]
+    centre = int(row["index_on_contig"])
+    lo, hi = centre - window, centre + window
+    truncated = lo < 0 or hi > int(same["index_on_contig"].max())
+    near = same[(same["index_on_contig"] >= lo) & (same["index_on_contig"] <= hi)].copy()
+    near["offset"] = near["index_on_contig"] - centre
+    return near.reset_index(drop=True), truncated
+
+
+def classify_by_neighbours(
+    cds: pd.DataFrame,
+    members: list[str],
+    pattern: str,
+    window: int = 5,
+) -> pd.DataFrame:
+    """Label each member by whether a neighbour's product matches `pattern`.
+
+    `edge` marks members whose window was truncated by a sequence end; a
+    negative call there is not safe to trust.
+    """
+    rx = re.compile(pattern, re.I)
+    rows = []
+    for member in members:
+        try:
+            near, truncated = neighbourhood(cds, member, window)
+        except KeyError:
+            rows.append({"member_id": member, "label": "not_in_gff", "n_matching": 0,
+                         "edge": False, "nearest_offset": pd.NA, "matches": ""})
+            continue
+        others = near[near["member_id"] != member]
+        # astype(bool) matters: an empty .map() result is object-dtype, which
+        # pandas reads as column selection rather than a mask
+        mask = others["product"].map(lambda p: bool(rx.search(p))).astype(bool)
+        matched = others[mask]
+        nearest = (matched["offset"].abs().min() if len(matched) else pd.NA)
+        rows.append({
+            "member_id": member,
+            "label": "associated" if len(matched) else "solo",
+            "n_matching": len(matched),
+            "edge": truncated,
+            "nearest_offset": nearest,
+            "matches": "; ".join(sorted(set(matched["product"]))[:3]),
+        })
+    return pd.DataFrame(rows)
