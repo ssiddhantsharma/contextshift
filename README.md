@@ -133,11 +133,17 @@ looks large and is not gets flagged before you spend anything.
 - [`VERIFICATION.md`](VERIFICATION.md) — every assumption about an external
   tool, and whether it was measured, documented, or is still unchecked.
 
-Conservation is checked against published ground truth, not only against its
-own definition: on the Capra & Singh benchmark, catalytic sites scored as more
-constrained in **57 of 57** proteins, pooled **AUC 0.924**. Five of those
-proteins ship as a fixture. That matters because the `core` class -- the
-negative control the whole 2x2 rests on -- assumes exactly this.
+Two stages are checked against published ground truth rather than against their
+own definitions, using the data supporting Capra & Singh 2007:
+
+| | |
+|---|---|
+| catalytic sites score as more constrained | **57 of 57** proteins, mean AUC **0.924** |
+| residue-to-ligand distances match published values | **7 of 8** structures exact |
+
+The eighth has 1,410 deposited hydrogens, which the published distances include
+and this library deliberately does not. Small fixtures ship so the tests run
+offline; `benchmarks/capra_singh.py` reproduces the full numbers.
 
 The design also rests on one assumption, so it is asserted rather than argued: this
 library runs group pairs one at a time, which is sound only if a pairwise

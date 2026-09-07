@@ -16,3 +16,9 @@ Capra & Singh 2007, *Bioinformatics* 23:1875-1882
 (compbio.cs.princeton.edu/conservation/). Alignments converted from CLUSTAL to
 FASTA; labels unchanged. Used to check the conservation stage against published
 ground truth rather than against its own definition.
+
+## `ligand/`
+PDB 1A71 (chain A plus every copy of its NAD ligand, waters removed) and the
+matching `.dist_to_lig` file from the Capra & Singh data. Chosen because 1A71
+has no deposited hydrogens, so heavy-atom distances reproduce the published
+values exactly.
