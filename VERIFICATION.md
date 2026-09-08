@@ -65,6 +65,10 @@ Built from source and run; none of this is from its documentation.
 | `Gu99`, `Rvs`, `TypeOneAnalysis` raise `NameError` in 4.1.0 | measured | undefined `get_colnames`; every Type-I entry point is unusable as shipped. Shim recorded in run notes. Upstream [PR #8](https://github.com/zjupgx/diverge4/pull/8) |
 | Qk >= 0.9 as the calling threshold | documented | DIVERGE User Guide |
 | Not installable from PyPI | measured | sdist reads a `requirements.txt` it does not ship; default `src/` tree is MSVC-only. PRs [#9](https://github.com/zjupgx/diverge4/pull/9), [#10](https://github.com/zjupgx/diverge4/pull/10) |
+| A branch length in **(0, 1e-4)** calls `abort()` | measured | SIGABRT kills the interpreter with no exception and no message. Exactly `0.0` is accepted; 1e-7, 1e-6, 2e-6 and 1e-5 abort; 1e-4 and above run. Substituting one internal `):0.00000` for `):0.000002` in the shipped `cl1.tree` turns a 781-position run into a crash. Guarded by `unsafe_branches`/`floor_branches`; `conform` floors by default and records the count |
+| Only columns **gap-free across every sequence in the file** are scored | measured | CASP has 781 gap-free columns and 781 came back; a 198-sequence pool with 3 gap-free columns returned 3 and an all-NaN summary. No warning is issued. Counted by `gap_free_columns` |
+| A fit can fail while still returning a theta | measured | `ThetaML` collapsed to 0.000 against `MFE Theta` 0.407, with no per-site posteriors and `SE Theta`/`LRT Theta` absent. The CASP fixture instead gives 0.156/0.124 with both present and all 781 posteriors set. Graded by `assess`; `run_pair` raises `DivergeNonConvergent` by default |
+| Per-site output is **not reproducible run to run** | measured | byte-identical trees (`diff`) and alignment returned 215 Type-I rows in two runs and 0 in another, Type-II 215 rows against 65. The summary statistic was stable (0.4075 against 0.4067 on ML and consensus trees) |
 
 ## Other tools
 

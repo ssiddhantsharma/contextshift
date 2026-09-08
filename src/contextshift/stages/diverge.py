@@ -40,6 +40,10 @@ POSITION_BASE = 0
 
 DEFAULT_QK = 0.9
 
+# DIVERGE calls abort() on branch lengths in (0, 1e-4), killing the interpreter
+# with no exception. Exactly 0.0 is accepted. Measured on 4.1.0.
+MIN_SAFE_BRANCH = 1e-4
+
 BROKEN_UPSTREAM = {
     "Gu99": "calls undefined get_colnames() in .summary (diverge 4.1.0)",
     "Rvs": "calls undefined get_colnames() in .summary (diverge 4.1.0)",
@@ -60,12 +64,17 @@ class DivergeUpstreamBug(RuntimeError):
     pass
 
 
+class DivergeNonConvergent(RuntimeError):
+    pass
+
+
 @dataclass(frozen=True)
 class TreeCheck:
     ok: bool
     depth: int
     n_leaves: int
     problems: tuple[str, ...] = ()
+    floored: int = 0
 
 
 def _read_tree(newick: str):
@@ -78,6 +87,31 @@ def tree_depth(newick: str) -> int:
     """Edges from root to deepest leaf, as DIVERGE measures it."""
     tree = _read_tree(newick)
     return max(len(tree.trace(tree.root, clade)) for clade in tree.get_terminals())
+
+
+def unsafe_branches(newick: str, floor: float = MIN_SAFE_BRANCH) -> tuple[int, float | None]:
+    """Branches DIVERGE aborts on: 0 < length < floor. Returns count and the smallest."""
+    tree = _read_tree(newick)
+    bad = [c.branch_length for c in tree.find_clades()
+           if c.branch_length is not None and 0 < c.branch_length < floor]
+    return len(bad), (min(bad) if bad else None)
+
+
+def floor_branches(newick: str, floor: float = MIN_SAFE_BRANCH) -> tuple[str, int]:
+    """Raise the aborting branches to `floor`; returns the tree and how many moved."""
+    from Bio import Phylo
+
+    tree = _read_tree(newick)
+    n = 0
+    for clade in tree.find_clades():
+        if clade.branch_length is not None and 0 < clade.branch_length < floor:
+            clade.branch_length = floor
+            n += 1
+    if not n:
+        return newick, 0
+    out = io.StringIO()
+    Phylo.write(tree, out, "newick")
+    return out.getvalue().strip(), n
 
 
 def check_tree(newick: str, min_depth: int = 3, min_leaves: int = 4) -> TreeCheck:
@@ -97,11 +131,25 @@ def check_tree(newick: str, min_depth: int = 3, min_leaves: int = 4) -> TreeChec
     return TreeCheck(not problems, depth, n_leaves, tuple(problems))
 
 
-def conform(newick: str, min_depth: int = 3, min_leaves: int = 4) -> tuple[str, TreeCheck]:
+def conform(
+    newick: str,
+    min_depth: int = 3,
+    min_leaves: int = 4,
+    floor: float | None = MIN_SAFE_BRANCH,
+) -> tuple[str, TreeCheck]:
+    """Make a tree safe for DIVERGE. Passing floor=None leaves branch lengths alone."""
     cleaned = newick.strip()
     if not cleaned.endswith(";"):
         cleaned += ";"
-    return cleaned, check_tree(cleaned, min_depth, min_leaves)
+    moved = 0
+    if floor is not None:
+        cleaned, moved = floor_branches(cleaned, floor)
+        if not cleaned.endswith(";"):
+            cleaned += ";"
+    check = check_tree(cleaned, min_depth, min_leaves)
+    if moved:
+        check = TreeCheck(check.ok, check.depth, check.n_leaves, check.problems, moved)
+    return cleaned, check
 
 
 def write_cluster_trees(
@@ -226,6 +274,74 @@ def normalise_summary(
     return COMPARISONS.validate(pd.DataFrame(rows))
 
 
+@dataclass(frozen=True)
+class Convergence:
+    """How much of a DIVERGE fit can be trusted.
+
+    Graded against the signature of the package's own CASP fixture, which returns
+    MFE Theta 0.156 and ThetaML 0.124 with SE Theta and LRT Theta both present and
+    every per-site posterior non-NaN.
+    """
+
+    verdict: str
+    problems: tuple[str, ...] = ()
+
+    @property
+    def ok(self) -> bool:
+        return self.verdict != "failed"
+
+
+def gap_free_columns(alignment: Path) -> int:
+    """Columns with no gap in any sequence. DIVERGE scores only these."""
+    from Bio import AlignIO
+
+    aln = AlignIO.read(str(alignment), "fasta")
+    rows = [str(r.seq) for r in aln]
+    return sum(1 for i in range(len(rows[0])) if all(r[i] != "-" for r in rows))
+
+
+def _value(summary: pd.Series, test: str, name: str) -> float | None:
+    try:
+        v = summary.get((test, name))
+    except (KeyError, TypeError):
+        return None
+    if v is None or v != v:
+        return None
+    return float(v)
+
+
+def assess(comparisons: pd.DataFrame, sites: pd.DataFrame) -> Convergence:
+    """Grade a fit. A failed fit is not a result; its theta must not be quoted."""
+    problems: list[str] = []
+    summary = comparisons.set_index(["test", "parameter"])["value"]
+    mfe = _value(summary, TYPE1, "MFE Theta")
+    ml = _value(summary, TYPE1, "ThetaML")
+    se = _value(summary, TYPE1, "SE Theta")
+    lrt = _value(summary, TYPE1, "LRT Theta")
+
+    t1 = sites[sites["test"] == TYPE1]
+    posteriors = int(t1["posterior"].notna().sum())
+    if len(t1) and not posteriors:
+        problems.append("every Type-I posterior is NaN")
+    if not len(t1):
+        problems.append("Type-I returned no rows")
+
+    if mfe is not None and ml is None:
+        problems.append(f"ThetaML absent while MFE Theta is {mfe:.3f}")
+    elif mfe is not None and ml is not None:
+        if ml == 0 and mfe > 0.05:
+            problems.append(f"ThetaML collapsed to 0 while MFE Theta is {mfe:.3f}")
+        elif abs(mfe - ml) > max(0.05, 0.5 * mfe):
+            problems.append(f"MFE Theta {mfe:.3f} and ThetaML {ml:.3f} disagree")
+
+    failed = bool(problems)
+    if se is None or lrt is None:
+        problems.append("SE Theta or LRT Theta absent (the ML variance step did not finish)")
+    if failed:
+        return Convergence("failed", tuple(problems))
+    return Convergence("degraded" if problems else "healthy", tuple(problems))
+
+
 def run_pair(
     alignment: Path,
     tree_a: Path,
@@ -236,10 +352,12 @@ def run_pair(
     group_b: str,
     include_type1: bool = True,
     allow_shim: bool = True,
+    require_convergence: bool = True,
 ) -> tuple[pd.DataFrame, pd.DataFrame, list[str]]:
     """Run Type-II and, unless disabled, Type-I for one group pair.
 
-    Returns (sites, comparisons, notes); notes record any shim use.
+    Returns (sites, comparisons, notes); notes record any shim use and the
+    convergence verdict. A failed fit raises unless require_convergence is False.
     """
     diverge = _import_diverge()
     names = [group_a, group_b]
@@ -264,11 +382,19 @@ def run_pair(
             normalise_summary(gu.summary, family, partition, group_a, group_b, TYPE1)
         )
 
-    return (
-        pd.concat(sites, ignore_index=True),
-        pd.concat(comparisons, ignore_index=True),
-        notes,
-    )
+    all_sites = pd.concat(sites, ignore_index=True)
+    all_comparisons = pd.concat(comparisons, ignore_index=True)
+
+    if include_type1:
+        verdict = assess(all_comparisons, all_sites)
+        notes.append(f"convergence: {verdict.verdict}")
+        notes.extend(verdict.problems)
+        if require_convergence and not verdict.ok:
+            raise DivergeNonConvergent(
+                f"{group_a} vs {group_b}: " + "; ".join(verdict.problems)
+            )
+
+    return all_sites, all_comparisons, notes
 
 
 def run_partition(
